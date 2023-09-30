@@ -30,21 +30,27 @@ def generate_answers(question, source_code, model="gpt-3.5-turbo-16k"):
 # Main Streamlit app
 st.title("SEO Auditor")
 
-url = st.text_input("Enter URL")
+# Initialize session states
+if 'url' not in st.session_state:
+    st.session_state.url = ''
 
-source_code = None
+if 'source_code' not in st.session_state:
+    st.session_state.source_code = ''
+
+st.session_state.url = st.text_input("Enter URL", st.session_state.url)
+
 if st.button("Scan"):
-    if not url:
+    if not st.session_state.url:
         st.warning("Please enter a URL before scanning.")
     else:
-        source_code = crawl_page(url)
+        st.session_state.source_code = crawl_page(st.session_state.url)
 
-if source_code:
+if st.session_state.source_code:
     st.text("Page Source Code:")
-    st.code(source_code, language="html")
+    st.code(st.session_state.source_code, language="html")
 
     question = st.text_input("Enter your question about the page")
     if st.button("Submit Question") and question:
-        answer = generate_answers(question, source_code)
+        answer = generate_answers(question, st.session_state.source_code)
         st.text("Answers:")
         st.write(answer)
