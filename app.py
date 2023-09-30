@@ -1,10 +1,9 @@
 import streamlit as st
 import requests
-from bs4 import BeautifulSoup
 import openai
 
-# Set your OpenAI API key
-openai.api_key = "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"
+# Set your OpenAI API key securely using Streamlit secrets.toml
+openai.api_key = st.secrets["openai_api_key"]
 
 # Function to crawl a webpage and return its source code
 def crawl_page(url):
@@ -35,21 +34,25 @@ def generate_answers(question, model="gpt-3.5-turbo-16k"):
 st.title("SEO Auditor")
 
 url = st.text_input("Enter URL")
-source_code = crawl_page(url)
 
-if source_code:
-    st.text("Page Source Code:")
-    st.code(source_code, language="html")
+if st.button("Scan"):
+    if not url:
+        st.warning("Please enter a URL before scanning.")
+    else:
+        source_code = crawl_page(url)
+        if source_code:
+            st.text("Page Source Code:")
+            st.code(source_code, language="html")
 
-    questions = st.text_area("Enter your questions")
+            questions = st.text_area("Enter your questions")
 
-    if st.button("Get Answers"):
-        seo_recommendations = analyze_seo(source_code)
-        if seo_recommendations:
-            st.text("SEO Recommendations:")
-            st.write(seo_recommendations)
+            if st.button("Get Answers"):
+                seo_recommendations = analyze_seo(source_code)
+                if seo_recommendations:
+                    st.text("SEO Recommendations:")
+                    st.write(seo_recommendations)
 
-        if questions:
-            answer = generate_answers(questions)
-            st.text("Answers:")
-            st.write(answer)
+                if questions:
+                    answer = generate_answers(questions)
+                    st.text("Answers:")
+                    st.write(answer)
