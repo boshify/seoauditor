@@ -1,0 +1,2 @@
+# seoauditor
+SEO Audit Automation
