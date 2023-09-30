@@ -32,17 +32,19 @@ st.title("SEO Auditor")
 
 url = st.text_input("Enter URL")
 
+source_code = None
 if st.button("Scan"):
     if not url:
         st.warning("Please enter a URL before scanning.")
     else:
         source_code = crawl_page(url)
-        if source_code:
-            st.text("Page Source Code:")
-            st.code(source_code, language="html")
 
-            question = st.text_input("Enter your question about the page")
-            if question:
-                answer = generate_answers(question, source_code)
-                st.text("Answers:")
-                st.write(answer)
+if source_code:
+    st.text("Page Source Code:")
+    st.code(source_code, language="html")
+
+    question = st.text_input("Enter your question about the page")
+    if st.button("Submit Question") and question:
+        answer = generate_answers(question, source_code)
+        st.text("Answers:")
+        st.write(answer)
