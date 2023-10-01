@@ -1,42 +1,53 @@
 import streamlit as st
 from bs4 import BeautifulSoup
 import requests
-import openai
-
-# Initialize OpenAI with API key from Streamlit's secrets
-openai.api_key = st.secrets["openai_api_key"]
 
 # Progress bar messages
 PROGRESS_MESSAGES = [
-    "Casting SEO spells...",
-    "Unleashing digital spiders...",
-    "Diving into meta tags...",
-    "Whispering to web spirits...",
-    "Riding backlink waves...",
-    "Decoding HTML matrix...",
-    "Unraveling web yarn...",
-    "Consulting the algorithm...",
-    "Fetching search wisdom...",
-    "Brewing the SEO potion..."
+    "Initializing...",
+    "Fetching website data...",
+    "Analyzing title tag...",
+    "Analyzing meta description...",
+    "Checking links...",
+    "Finalizing..."
 ]
 
-def TT(url):
-    # Placeholder function, fill in with actual functionality
-    return {
-        "message": "Title analysis not implemented yet.",
-        "what_it_is": "Analysis of the webpage title.",
-        "how_to_fix": "N/A",
-        "audit_name": "Title Audit"
-    }
+def TT(soup):
+    title_tag = soup.title.string if soup.title else None
+    if not title_tag:
+        return {
+            "message": "No title tag found.",
+            "what_it_is": "Analysis of the webpage title.",
+            "how_to_fix": "Ensure the webpage has a <title> tag.",
+            "audit_name": "Title Audit"
+        }
+    else:
+        # Here, you can add more analysis on the title tag if needed
+        return {
+            "message": f"Title: {title_tag}",
+            "what_it_is": "Analysis of the webpage title.",
+            "how_to_fix": "Review the title for relevant keywords and appropriate length.",
+            "audit_name": "Title Audit"
+        }
 
-def MD(url):
-    # Placeholder function, fill in with actual functionality
-    return {
-        "message": "Meta description analysis not implemented yet.",
-        "what_it_is": "Analysis of the webpage's meta description.",
-        "how_to_fix": "N/A",
-        "audit_name": "Meta Description Audit"
-    }
+def MD(soup):
+    meta_description = soup.find('meta', attrs={'name': 'description'})
+    content = meta_description['content'] if meta_description else None
+    if not content:
+        return {
+            "message": "No meta description found.",
+            "what_it_is": "Analysis of the webpage's meta description.",
+            "how_to_fix": "Ensure the webpage has a meta description tag.",
+            "audit_name": "Meta Description Audit"
+        }
+    else:
+        # Here, you can add more analysis on the meta description if needed
+        return {
+            "message": f"Meta Description: {content}",
+            "what_it_is": "Analysis of the webpage's meta description.",
+            "how_to_fix": "Review the meta description for relevant keywords and appropriate length.",
+            "audit_name": "Meta Description Audit"
+        }
 
 def IL(url):
     response = requests.get(url)
@@ -56,6 +67,10 @@ def IL(url):
     error_links, long_links, broken_links, resource_as_link, img_links = [], [], [], [], []
     for link_element in visible_links:
         link = link_element['href']
+
+        # Checking for relative links and converting them to absolute links
+        if link.startswith("/"):
+            link = url.rstrip("/") + link
 
         if len(link) > 200:
             long_links.append(link)
@@ -105,14 +120,20 @@ url = st.text_input('Enter URL:', 'https://www.example.com')
 if url:
     progress = st.progress(0)
     progress_bar_steps = len(PROGRESS_MESSAGES)
+    
     for i, msg in enumerate(PROGRESS_MESSAGES):
         progress.text(msg)
         progress.progress((i+1)/progress_bar_steps)
-
-    # Call the functions and get results
-    title_results = TT(url)
-    meta_results = MD(url)
-    link_results = IL(url)
+        
+        if msg == "Fetching website data...":
+            response = requests.get(url)
+            soup = BeautifulSoup(response.content, 'html.parser')
+        elif msg == "Analyzing title tag...":
+            title_results = TT(soup)
+        elif msg == "Analyzing meta description...":
+            meta_results = MD(soup)
+        elif msg == "Checking links...":
+            link_results = IL(url)
 
     # Display results
     for result in [title_results, meta_results, link_results]:
