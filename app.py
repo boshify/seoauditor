@@ -89,14 +89,21 @@ def IL(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     links = soup.find_all('a', href=True)
+    scripts = soup.find_all('script', src=True)
+    styles = soup.find_all('link', rel="stylesheet")
+    images = soup.find_all('img', src=True)
+    hreflangs = soup.find_all('link', rel="alternate", hreflang=True)
 
+    # Combine all the links
+    all_links = links + scripts + styles + images + hreflangs
+    
     base_url = url.rsplit('/', 1)[0]
     error_links = []
     progress_bar = st.progress(0)
     progress_text = st.empty()
 
-    for index, a in enumerate(links):
-        link = a['href']
+    for index, link_element in enumerate(all_links):
+        link = link_element['href'] if 'href' in link_element.attrs else link_element['src']
 
         # Handle relative URLs
         if link.startswith('/'):
@@ -110,7 +117,7 @@ def IL(url):
             error_links.append(link)
 
         # Update the progress bar with rotating messages
-        progress_bar.progress((index + 1) / len(links))
+        progress_bar.progress((index + 1) / len(all_links))
         progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
 
     progress_text.empty()
@@ -142,6 +149,7 @@ if url:
     for result in results:
         st.write("---")  # Line break
         st.subheader(result["audit_name"])  # Displaying the custom audit name
+
         if 'title' in result and result["title"]:
             st.info(f"**Title Tag Content:** {result['title']}")
             insights = get_gpt_insights(result["title"], "title tag")
