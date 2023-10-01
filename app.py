@@ -86,112 +86,92 @@ def MD(url):
     return result
 
 def IL(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Filtering links that are part of the main content (within paragraph, div, and image tags)
-        link_elements = soup.find_all(['a', 'img'], recursive=True)
-        
-        error_messages = []
-        broken_links = []
-        very_long_links = []
-        access_errors = []
-        resource_as_page_links = []
-        
-        progress_bar = st.progress(0)
-        progress_text = st.empty()
-        total_links = len(link_elements)
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
 
-        for index, element in enumerate(link_elements):
-            link_url = element.get('href' if element.name == 'a' else 'src')
-            
-            # Check if URL is valid and not empty
-            if not link_url:
-                continue
+    # Find anchor tags within certain parent elements that users might interact with
+    link_parents = ['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'figcaption']
+    visible_links = []
 
-            # Check for long URLs
-            if len(link_url) > 200:
-                very_long_links.append(f"Very long URL: {link_url}")
+    for parent in link_parents:
+        for tag in soup.find_all(parent):
+            visible_links.extend(tag.find_all('a', href=True))
 
-            try:
-                r = requests.get(link_url, allow_redirects=True, timeout=5)
+    # Deduplicate
+    visible_links = list({link['href']: link for link in visible_links}.values())
+    
+    error_links = []
+    long_links = []
+    broken_links = []
+    resource_as_link = []
+    img_links = []
 
-                # Check for broken links
-                if r.status_code >= 400:
-                    broken_links.append(f"Broken link (status {r.status_code}): {link_url}")
+    for link_element in visible_links:
+        link = link_element['href']
 
-            except requests.RequestException as e:
-                access_errors.append(f"Error accessing link ({e}): {link_url}")
+        if len(link) > 200:  # Arbitrary length for "too long" URL
+            long_links.append(link)
+            continue
 
-            # Check for resources formatted as page links
-            if element.name == 'img' and element.parent.name == 'a':
-                resource_as_page_links.append(f"Resource img with URL {link_url} is formatted as a page link.")
+        try:
+            r = requests.get(link, allow_redirects=True, timeout=5)
+            if r.status_code >= 400:
+                broken_links.append(f"{link} (status {r.status_code})")
+        except Exception as e:
+            error_links.append(f"{link} ({str(e)})")
 
-            # Update the progress bar with rotating messages
-            progress_bar.progress((index + 1) / total_links)
-            progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
+        # Checking for resources formatted as links
+        if link_element.name == "img":
+            img_links.append(link)
+            if not any(ext in link for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']):
+                resource_as_link.append(link)
 
-        # Clear progress once done
-        progress_bar.empty()
-        progress_text.empty()
+    # Construct the results message
+    messages = []
+    if error_links:
+        messages.append(f"Error accessing links:\n{'\n'.join(error_links)}")
+    if long_links:
+        messages.append(f"Very long URLs:\n{'\n'.join(long_links)}")
+    if broken_links:
+        messages.append(f"Broken links:\n{'\n'.join(broken_links)}")
+    if len(visible_links) > 100:  # Arbitrary number for "too many" links
+        messages.append("This page has too many on-page links.")
+    if resource_as_link:
+        messages.append(f"Resources formatted as page links:\n{'\n'.join(resource_as_link)}")
+    if img_links:
+        messages.append(f"Images as links:\n{'\n'.join(img_links)}")
 
-        # Check for too many on-page links
-        if len(link_elements) > 100:
-            error_messages.append("This page has too many on-page links.")
+    result = {
+        "message": "\n\n".join(messages),
+        "what_it_is": "Linking checks for the page.",
+        "how_to_fix": "Each link issue is categorized. Review the specific issue category for recommendations.",
+        "audit_name": "Linking Audit"
+    }
 
-        # Group the messages
-        grouped_errors = []
-        if access_errors:
-            grouped_errors.append('\n'.join(access_errors))
-        if broken_links:
-            grouped_errors.append('\n'.join(broken_links))
-        if very_long_links:
-            grouped_errors.append('\n'.join(very_long_links))
-        if resource_as_page_links:
-            grouped_errors.append('\n'.join(resource_as_page_links))
-        if error_messages:
-            grouped_errors.append('\n'.join(error_messages))
+    return result
 
-        result = {
-            "message": "\n\n".join(grouped_errors),
-            "what_it_is": "Linking checks for the page.",
-            "how_to_fix": "Each link issue is categorized. Review the specific issue category for recommendations.",
-            "audit_name": "Linking Audit"
-        }
+# Streamlit app interface and logic
 
-        return result
+st.title('SEO Audit Tool')
+st.write('Provide a URL to get insights on its SEO.')
 
-    except requests.RequestException as e:
-        return {
-            "message": f"Error fetching the URL. Details: {e}",
-            "what_it_is": "Linking checks for the page.",
-            "how_to_fix": "Ensure the URL is correct and accessible.",
-            "audit_name": "Linking Audit"
-        }
-
-def run_audits(url):
-    return [TT(url), MD(url), IL(url)]
-
-# Streamlit App
-st.title("Single Page SEO Auditor")
-url = st.text_input("Enter URL of the page to audit")
+url = st.text_input('Enter URL:', 'https://www.example.com')
 
 if url:
-    results = run_audits(url)
-    for result in results:
-        st.write("---")  # Line break
-        st.subheader(result["audit_name"])  # Displaying the custom audit name
+    progress = st.progress(0)
+    progress_bar_steps = len(PROGRESS_MESSAGES)
+    for i, msg in enumerate(PROGRESS_MESSAGES):
+        progress.text(msg)
+        progress.progress((i+1)/progress_bar_steps)
 
-        if 'title' in result and result["title"]:
-            st.info(f"**Title Tag Content:** {result['title']}")
-            insights = get_gpt_insights(result["title"], "title tag")
-            st.info(f"**GPT Insights:** {insights}")
-        elif 'description' in result and result["description"]:
-            st.info(f"**Meta Description Content:** {result['description']}")
-            insights = get_gpt_insights(result["description"], "meta description")
-            st.info(f"**GPT Insights:** {insights}")
+    # Call the functions and get results
+    title_results = TT(url)
+    meta_results = MD(url)
+    link_results = IL(url)
 
-        st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
-
+    # Display results
+    for result in [title_results, meta_results, link_results]:
+        st.subheader(result['audit_name'])
+        st.write(result['message'])
+        st.write("What it is:", result['what_it_is'])
+        st.write("How to fix:", result['how_to_fix'])
