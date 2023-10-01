@@ -208,6 +208,8 @@ if url:
                 st.write("**Issue:**", issue_data["issue"])
                 st.write("**Solution:**", issue_data["solution"])
                 st.write("**Example:**", issue_data["example"])
+                st.write("---")  # Adds a horizontal line for separation
+
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
