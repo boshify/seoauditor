@@ -35,7 +35,6 @@ def TT(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title_tag = soup.find('title')
-    
     result = {
         "title": title_tag.text if title_tag else None,
         "message": "",
@@ -57,7 +56,6 @@ def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     meta_description = soup.find('meta', attrs={"name": "description"})
-    
     result = {
         "description": meta_description['content'] if meta_description else None,
         "message": "",
@@ -78,25 +76,21 @@ def MD(url):
 def IL(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
+    main_content = soup.find('main')  # Assuming "main" tag is used for main content
+    if not main_content:
+        main_content = soup.body  # Default to body if "main" tag is not found
+    link_elements = main_content.find_all(['a', 'img'], recursive=True)
     
-    link_elements = soup.find_all(['a', 'img'], recursive=True)
-    
-    error_messages = []
     broken_links = []
     very_long_links = []
     access_errors = []
     resource_as_page_links = []
     
-    progress_bar = st.progress(0)
-    progress_text = st.empty()
-    total_links = len(link_elements)
-
-    for index, element in enumerate(link_elements):
+    for element in link_elements:
         link_url = element.get('href' if element.name == 'a' else 'src')
         
         if not link_url:
             continue
-
         if len(link_url) > 200:
             very_long_links.append(link_url)
 
@@ -104,49 +98,37 @@ def IL(url):
             r = requests.get(link_url, allow_redirects=True, timeout=5)
             if r.status_code >= 400:
                 broken_links.append(link_url)
-        except requests.RequestException as e:
+        except requests.RequestException:
             access_errors.append(link_url)
 
         if element.name == 'img' and element.parent.name == 'a':
             resource_as_page_links.append(link_url)
 
-        progress_bar.progress((index + 1) / total_links)
-        progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
+    prompt_content = "\n".join([
+        "*Broken Links:* " + ", ".join(broken_links) if broken_links else "",
+        "*Very Long URLs:* " + ", ".join(very_long_links) if very_long_links else "",
+        "*Access Errors:* " + ", ".join(access_errors) if access_errors else "",
+        "*Resource Images as Links:* " + ", ".join(resource_as_page_links) if resource_as_page_links else ""
+    ])
 
-    progress_bar.empty()
-    progress_text.empty()
+    prompt = f"Analyze the internal linking audit results and provide a brief summarized analysis and recommendations based on the following data: \n\n{prompt_content}"
+    insights = get_gpt_insights(prompt)
 
-    too_many_links_message = ""
-    if len(link_elements) > 100:
-        too_many_links_message = f"This page has {len(link_elements)} on-page links which might be excessive."
-
-    audit_data = {
-        "broken_links": broken_links,
-        "very_long_links": very_long_links,
-        "access_errors": access_errors,
-        "resource_as_page_links": resource_as_page_links,
-        "too_many_links_message": too_many_links_message
-    }
-
-    prompt = f"Analyze the following internal linking audit data and provide a brief summarized analysis and recommendations in markdown format: \n\n{audit_data}"
-    gpt_insights = get_gpt_insights(prompt)
-
-    result = {
-        "message": gpt_insights,
+    return {
+        "message": insights,
         "audit_name": "Linking Audit"
     }
-
-    return result
 
 def AnchorText(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    
-    anchor_elements = soup.find_all('a', href=True)
+    main_content = soup.find('main')  # Assuming "main" tag is used for main content
+    if not main_content:
+        main_content = soup.body  # Default to body if "main" tag is not found
+    anchor_elements = main_content.find_all('a', href=True)
     anchor_texts = [anchor.text.strip() for anchor in anchor_elements if anchor.text.strip()]
     combined_texts = "\n".join(anchor_texts)
-    
-    prompt = f"Analyze the following anchor texts and provide insights, analysis, and recommendations in markdown format using specific examples: \n\n{combined_texts}"
+    prompt = f"Provide an analysis and recommendations based on the following anchor texts: \n\n{combined_texts}"
     insights = get_gpt_insights(prompt)
 
     return {
@@ -154,27 +136,26 @@ def AnchorText(url):
         "audit_name": "Anchor Text Audit"
     }
 
-st.title("Single Page SEO Auditor")
+# Streamlit UI
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
-    title_results = TT(url)
-    meta_results = MD(url)
-    link_results = IL(url)
-    anchor_text_results = AnchorText(url)
+    with st.spinner("Analyzing..."):
+        title_tag_result = TT(url)
+        st.subheader(title_tag_result["audit_name"])
+        st.write("Title Tag Content:", title_tag_result["title"])
+        insights = get_gpt_insights(f"Analyze the title tag '{title_tag_result['title']}' and provide insights and optimization suggestions.")
+        st.markdown(f"**GPT Insights:** {insights}")
+        st.write(title_tag_result["message"])
 
-    results = [title_results, meta_results, link_results, anchor_text_results]
+        meta_description_result = MD(url)
+        st.subheader(meta_description_result["audit_name"])
+        st.write(meta_description_result["message"])
 
-    for result in results:
-        st.write("---")
-        st.subheader(result["audit_name"])
-        if 'title' in result and result["title"]:
-            st.info(f"**Title Tag Content:** {result['title']}")
-            insights = get_gpt_insights(f"Rate the title tag '{result['title']}' on a scale of 1 to 5 and provide an optimized version.")
-            st.info(f"**GPT Insights:** {insights}")
-        elif 'description' in result and result["description"]:
-            st.info(f"**Meta Description Content:** {result['description']}")
-            insights = get_gpt_insights(f"Rate the meta description '{result['description']}' on a scale of 1 to 5 and provide an optimized version.")
-            st.info(f"**GPT Insights:** {insights}")
+        linking_result = IL(url)
+        st.subheader(linking_result["audit_name"])
+        st.write(linking_result["message"])
 
-        st.info(f"**Result:** {result['message']}")
+        anchor_text_result = AnchorText(url)
+        st.subheader(anchor_text_result["audit_name"])
+        st.write(anchor_text_result["message"])
