@@ -144,19 +144,28 @@ def get_pagespeed_insights(url):
     return data
 
 def analyze_pagespeed_data(data):
-    crux_metrics = {
-        "First Contentful Paint": data['loadingExperience']['metrics']['FIRST_CONTENTFUL_PAINT_MS']['category'],
-        "First Input Delay": data['loadingExperience']['metrics']['FIRST_INPUT_DELAY_MS']['category']
-    }
+    crux_metrics = {}
+    lighthouse_metrics = {}
 
-    lighthouse_metrics = {
-        'First Contentful Paint': data['lighthouseResult']['audits']['first-contentful-paint']['displayValue'],
-        'Speed Index': data['lighthouseResult']['audits']['speed-index']['displayValue'],
-        'Time To Interactive': data['lighthouseResult']['audits']['interactive']['displayValue'],
-        'First Meaningful Paint': data['lighthouseResult']['audits']['first-meaningful-paint']['displayValue'],
-        'First CPU Idle': data['lighthouseResult']['audits']['first-cpu-idle']['displayValue'],
-        'Estimated Input Latency': data['lighthouseResult']['audits']['estimated-input-latency']['displayValue']
-    }
+    # Check and extract CrUX metrics
+    if 'loadingExperience' in data and 'metrics' in data['loadingExperience']:
+        metrics = data['loadingExperience']['metrics']
+        if 'FIRST_CONTENTFUL_PAINT_MS' in metrics:
+            crux_metrics['First Contentful Paint'] = metrics['FIRST_CONTENTFUL_PAINT_MS']['category']
+        if 'FIRST_INPUT_DELAY_MS' in metrics:
+            crux_metrics['First Input Delay'] = metrics['FIRST_INPUT_DELAY_MS']['category']
+
+    # Extract Lighthouse metrics
+    if 'lighthouseResult' in data and 'audits' in data['lighthouseResult']:
+        audits = data['lighthouseResult']['audits']
+        lighthouse_metrics = {
+            'First Contentful Paint': audits['first-contentful-paint']['displayValue'],
+            'Speed Index': audits['speed-index']['displayValue'],
+            'Time To Interactive': audits['interactive']['displayValue'],
+            'First Meaningful Paint': audits['first-meaningful-paint']['displayValue'],
+            'First CPU Idle': audits['first-cpu-idle']['displayValue'],
+            'Estimated Input Latency': audits['estimated-input-latency']['displayValue']
+        }
 
     return crux_metrics, lighthouse_metrics
 
