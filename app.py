@@ -30,10 +30,12 @@ def TT(url):
     elif len(title) > 60:
         insights += "The title tag is longer than the recommended 50-60 characters. "
         insights += "Consider shortening it while retaining its main message. "
+    else:
+        insights += "The title tag is within the recommended length and seems well-optimized. "
+        insights += "Ensure it's relevant and unique to the content of the page."
     
-    # You can add more title-specific checks and recommendations here
-
     return title, insights
+
 
 def MD(url):
     response = requests.get(url)
