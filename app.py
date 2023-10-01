@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import openai
 from urllib.parse import urljoin
+
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
@@ -36,7 +37,6 @@ def TT(url):
     
     return title, insights
 
-
 def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -59,23 +59,11 @@ def MD(url):
         if not any(cta in desc.lower() for cta in ctas):
             insights += "Consider adding a call to action in the meta description to entice users. "
         
-        # You can add more meta description-specific checks and recommendations here
-
         return desc, insights
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
 def validate_link(base_url, href):
-    """
-    Validate the link by checking its HTTP status code.
-    
-    Args:
-    - base_url (str): The base URL of the page being audited.
-    - href (str): The href value of the link being checked.
-    
-    Returns:
-    - int: HTTP status code if the link is broken, otherwise None.
-    """
     # Convert relative URLs to absolute URLs
     full_url = urljoin(base_url, href)
     
@@ -87,7 +75,7 @@ def validate_link(base_url, href):
         if 400 <= response.status_code <= 599:
             return response.status_code
     except requests.RequestException:
-        # If there's a request exception (e.g., timeout, DNS failure), consider the link as broken
+        # If there's a request exception, consider the link as broken
         return 503  # Service Unavailable as a generic error
     
     return None
@@ -125,7 +113,6 @@ def LinkingAudit(url):
 
     return structured_issues
 
-
 def AnchorTextAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -138,14 +125,12 @@ def AnchorTextAudit(url):
     generic_texts = ["click here", "read more", "here", "link", "more"]
     issues, solutions, examples = [], [], []
     
-    # Check for generic anchor texts
     for text in anchor_texts:
         if text.lower() in generic_texts:
             issues.append(f"The anchor text '{text}' is too generic.")
             solutions.append("Use more descriptive anchor texts.")
             examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
 
-    # Check for overoptimized anchor texts
     from collections import Counter
     anchor_text_count = Counter(anchor_texts)
     for text, count in anchor_text_count.items():
@@ -154,20 +139,12 @@ def AnchorTextAudit(url):
             solutions.append("Diversify your anchor texts.")
             examples.append(f"Instead of using '{text}' multiple times, consider other variations or synonyms.")
     
-    # Check for short anchor texts
     for text in anchor_texts:
         if len(text.split()) == 1:
             issues.append(f"The anchor text '{text}' is too short.")
             solutions.append("Use more descriptive anchor texts.")
-            # Provide more specific examples based on the anchor text context
-            if text.lower() == "linkedin":
-                examples.append(f"Consider using 'Visit my LinkedIn profile'.")
-            elif text.lower() == "newsletter":
-                examples.append(f"Consider using 'Subscribe to our newsletter'.")
-            else:
-                examples.append(f"Expand on '{text}' to provide more context or detail.")
+            examples.append(f"Expand on '{text}' to provide more context or detail.")
     
-    # Check for long anchor texts
     for text in anchor_texts:
         if len(text.split()) > 8:
             issues.append(f"The anchor text '{text}' is too long and might not be user-friendly.")
@@ -175,7 +152,6 @@ def AnchorTextAudit(url):
             examples.append(f"Consider a more concise version of '{text}'.")
     
     return issues, solutions, examples
-
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
@@ -199,7 +175,6 @@ if url:
             else:
                 st.write(meta_desc_insights)
 
-
         # Linking Audit
         with st.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
@@ -208,7 +183,6 @@ if url:
                 st.write("**Solution:**", issue_data["solution"])
                 st.write("**Example:**", issue_data["example"])
                 st.write("---")  # Adds a horizontal line for separation
-
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
