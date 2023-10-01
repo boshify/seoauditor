@@ -101,57 +101,93 @@ def IL(url):
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        links = [link for link in soup.find_all('a', href=True) if link.text.strip()]
-        base_url = url.rsplit('/', 1)[0]
-        error_links = []
-        total_links = len(links)
+        # Get all links, scripts, images, and CSS references
+        link_elements = soup.find_all(['a', 'script', 'link', 'img'])
+        
+        error_messages = []
+        
+        for element in link_elements:
+            link_url = None
+            
+            if element.name == 'a':
+                link_url = element.get('href')
+            elif element.name == 'script' or element.name == 'img':
+                link_url = element.get('src')
+            elif element.name == 'link':
+                link_url = element.get('href')
 
-        if total_links == 0:
-            st.warning("No links found on the page.")
-            return None
+            # Check if URL is valid and not empty
+            if not link_url:
+                continue
 
-        progress_bar = st.progress(0)
-        progress_text = st.empty()
+            # Check if the link is external
+            if not link_url.startswith(('http', '//')):
+                continue
 
-        for index, link_element in enumerate(links):
-            link = link_element['href']
+            # Check for HTTPS to HTTP links
+            if url.startswith('https') and link_url.startswith('http://'):
+                error_messages.append(f"Link from HTTPS to non-secure page: {link_url}")
 
-            if link.startswith('/'):
-                link = base_url + link
+            # Check for long URLs
+            if len(link_url) > 200:
+                error_messages.append(f"Very long URL: {link_url}")
 
             try:
-                r = requests.get(link, allow_redirects=True, timeout=5)
+                r = requests.get(link_url, allow_redirects=True, timeout=5)
+                
+                # Check for 403 status for external resources
+                if r.status_code == 403:
+                    error_messages.append(f"External resource forbidden (403): {link_url}")
+
+                # Check for broken links
+                elif r.status_code >= 400:
+                    error_messages.append(f"Broken link (status {r.status_code}): {link_url}")
+
+            except requests.RequestException:
+                error_messages.append(f"Error accessing link: {link_url}")
+
+        # Check for too many on-page links
+        if len(link_elements) > 100:
+            error_messages.append("This page has too many on-page links.")
+
+        # Check for resources formatted as page links
+        for element in soup.find_all(['script', 'link', 'img']):
+            if element.parent.name == 'a':
+                error_messages.append(f"Resource {element.name} with URL {element.get('src' or 'href')} is formatted as a page link.")
+
+        # Check for incorrect hreflang links
+        for element in soup.find_all('link', attrs={"hreflang": True}):
+            hreflang_url = element.get('href')
+            try:
+                r = requests.get(hreflang_url, allow_redirects=True, timeout=5)
                 if r.status_code >= 400:
-                    error_links.append(link)
-            except:
-                error_links.append(link)
-
-            progress_bar.progress((index + 1) / total_links)
-            progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
-
-        progress_text.empty()
+                    error_messages.append(f"Incorrect hreflang link with URL {hreflang_url}")
+            except requests.RequestException:
+                error_messages.append(f"Error accessing hreflang link with URL {hreflang_url}")
 
         result = {
             "message": "",
-            "what_it_is": "Internal linking refers to any links from one page of a domain that lead to another page within the same domain. It's crucial for both website navigation and SEO.",
+            "what_it_is": "Linking checks for the page.",
             "how_to_fix": "",
-            "audit_name": "Internal Linking Audit"
+            "audit_name": "Linking Audit"
         }
 
-        if error_links:
-            result["message"] = "Fail: Found broken or incorrect links."
-            result["how_to_fix"] = f"Fix or remove the following broken links: {', '.join(error_links)}"
+        if error_messages:
+            result["message"] = "\n".join(error_messages)
         else:
-            result["message"] = "Pass: No broken links found."
+            result["message"] = "Pass: No linking issues found."
 
         return result
     except requests.RequestException as e:
-        st.warning(f"Error fetching the URL. Details: {e}")
-        return None
+        return {
+            "message": f"Error fetching the URL. Details: {e}",
+            "what_it_is": "Linking checks for the page.",
+            "how_to_fix": "Ensure the URL is correct and accessible.",
+            "audit_name": "Linking Audit"
+        }
 
 def run_audits(url):
-    audits = [TT(url), MD(url), IL(url)]
-    return [audit for audit in audits if audit is not None]  # Filter out None values
+    return [TT(url), MD(url), IL(url)]
 
 # Streamlit App
 st.title("Single Page SEO Auditor")
@@ -160,8 +196,8 @@ url = st.text_input("Enter URL of the page to audit")
 if url:
     results = run_audits(url)
     for result in results:
-        st.write("---")
-        st.subheader(result["audit_name"])
+        st.write("---")  # Line break
+        st.subheader(result["audit_name"])  # Displaying the custom audit name
 
         if 'title' in result and result["title"]:
             st.info(f"**Title Tag Content:** {result['title']}")
