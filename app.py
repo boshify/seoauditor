@@ -114,11 +114,15 @@ if url:
 
         # Linking Audit
         with st.expander("🔗 Linking Audit"):
-            linking_results = IL(url)
-            st.write(linking_results)
+            issue, solution, example = LinkingAudit(url)
+            st.write(issue)
+            st.write(solution)
+            st.write(example)
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
-            anchor_texts, anchor_insights = AnchorText(url)
-            st.write(f"**Sample Anchor Texts:** {', '.join(anchor_texts[:5])} and more...")
-            st.write(f"**GPT Insights:** {anchor_insights}")
+            issues, solutions, examples = AnchorTextAudit(url)
+            for issue, solution, example in zip(issues, solutions, examples):
+                st.write(issue)
+                st.write(solution)
+                st.write(example)
