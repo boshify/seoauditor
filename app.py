@@ -65,6 +65,35 @@ def MD(url):
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
+from urllib.parse import urljoin
+
+def validate_link(base_url, href):
+    """
+    Validate the link by checking its HTTP status code.
+    
+    Args:
+    - base_url (str): The base URL of the page being audited.
+    - href (str): The href value of the link being checked.
+    
+    Returns:
+    - int: HTTP status code if the link is broken, otherwise None.
+    """
+    # Convert relative URLs to absolute URLs
+    full_url = urljoin(base_url, href)
+    
+    try:
+        # Use a HEAD request to get the status code without downloading the entire page
+        response = requests.head(full_url, allow_redirects=True, timeout=5)
+        
+        # If status code indicates client or server error, return it
+        if 400 <= response.status_code <= 599:
+            return response.status_code
+    except requests.RequestException:
+        # If there's a request exception (e.g., timeout, DNS failure), consider the link as broken
+        return 503  # Service Unavailable as a generic error
+    
+    return None
+
 def LinkingAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -76,89 +105,23 @@ def LinkingAudit(url):
     structured_issues = []
 
     links = main_content.find_all('a')
-    if len(links) > 100:
-        structured_issues.append({
-            "issue": "This page has too many on-page links.",
-            "solution": "Consider reducing the number of links for better user experience.",
-            "example": "If multiple links point to the same destination, consider consolidating them. For instance, combine multiple 'Read More' links into one comprehensive 'Resources' section."
-        })
-
     for link in links:
         href = link.get('href')
-        if len(href) > 2000:
+        status_code = validate_link(url, href)  # Pass the base URL as well
+        if status_code:
+            issue_prompt = f"Analyze link with status {status_code}: {href}"
+            insights = get_gpt_insights(issue_prompt)
+        
             structured_issues.append({
-                "issue": f"Link URL on this page is too long: {href}",
-                "solution": "Consider using URL shorteners or restructuring the URL.",
-                "example": "Avoid using unnecessary parameters or overly descriptive paths. Use clean, descriptive paths like '/products' instead of '/products?id=123&category=456'."
-            })
-
-        if url.startswith('https:') and href.startswith('http:'):
-            structured_issues.append({
-                "issue": f"Links on this HTTPS page lead to an HTTP page: {href}",
-                "solution": "Update links to use HTTPS to ensure secure content delivery.",
-                "example": f"Replace 'http://' with 'https://' in the link {href} if the destination supports it."
-            })
-
-        if not href.startswith(url):
-            try:
-                ext_response = requests.head(href, allow_redirects=True, timeout=5)
-                if ext_response.status_code == 403:
-                    structured_issues.append({
-                        "issue": f"Links to external page {href} returned a 403 HTTP status code.",
-                        "solution": "Check the external link's access permissions.",
-                        "example": "Ensure you are not linking to private or restricted content."
-                    })
-                if ext_response.status_code == 404:
-                    structured_issues.append({
-                        "issue": f"External link on this page is broken: {href}",
-                        "solution": "Update or remove the broken link.",
-                        "example": "Link to an updated resource or related content."
-                    })
-            except requests.RequestException:
-                structured_issues.append({
-                    "issue": f"Couldn't access the external link: {href}",
-                    "solution": "Ensure the external link is correct and accessible.",
-                    "example": "Verify the link's URL and destination."
-                })
-
-    js_files = main_content.find_all('script', src=True)
-    css_files = main_content.find_all('link', rel='stylesheet', href=True)
-    for resource in js_files + css_files:
-        href = resource.get('src') or resource.get('href')
-        try:
-            ext_response = requests.head(href, allow_redirects=True, timeout=5)
-            if ext_response.status_code == 404:
-                structured_issues.append({
-                    "issue": f"Broken external {resource.name.upper()} file linked from this page: {href}",
-                    "solution": "Update the link to the external resource.",
-                    "example": "Ensure you are linking to the correct and updated {resource.name.upper()} file."
-                })
-        except requests.RequestException:
-            structured_issues.append({
-                "issue": f"Couldn't access the external {resource.name.upper()} file: {href}",
-                "solution": "Ensure the link to the external {resource.name.upper()} file is correct.",
-                "example": "Verify the resource's URL and accessibility."
-            })
-
-    img_tags = main_content.find_all('img', src=True)
-    for img_tag in img_tags:
-        href = img_tag.get('src')
-        try:
-            ext_response = requests.head(href, allow_redirects=True, timeout=5)
-            if ext_response.status_code == 404:
-                structured_issues.append({
-                    "issue": f"External image linked from this page is broken: {href}",
-                    "solution": "Update the link to the external image.",
-                    "example": "Ensure you are linking to the correct and accessible image."
-                })
-        except requests.RequestException:
-            structured_issues.append({
-                "issue": f"Couldn't access the external image: {href}",
-                "solution": "Ensure the link to the external image is correct.",
-                "example": "Verify the image's URL and accessibility."
+                "issue": insights,
+                "solution": get_gpt_insights(f"Provide a solution for the link issue: {href}"),
+                "example": get_gpt_insights(f"Provide an example solution for the link issue: {href}")
             })
 
     return structured_issues
+
+# Note: The rest of the code remains unchanged.
+
 
 def AnchorTextAudit(url):
     response = requests.get(url)
