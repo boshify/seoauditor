@@ -86,7 +86,7 @@ def LinkingAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section')
+        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup if none found
 
     structured_issues = []
 
@@ -112,39 +112,11 @@ def AnchorTextAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup
+        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup if none found
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     generic_texts = ["click here", "read more", "here", "link", "more"]
-    issues, solutions, examples = [], [], []
-    
-    for text in anchor_texts:
-        if text.lower() in generic_texts:
-            issues.append(f"The anchor text '{text}' is too generic.")
-            solutions.append("Use more descriptive anchor texts.")
-            examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
-
-    from collections import Counter
-    anchor_text_count = Counter(anchor_texts)
-    for text, count in anchor_text_count.items():
-        if count > 5:
-            issues.append(f"The anchor text '{text}' is repeated {count} times. It might be overoptimized.")
-            solutions.append("Diversify your anchor texts.")
-            examples.append(f"Instead of using '{text}' multiple times, consider other variations or synonyms.")
-    
-    for text in anchor_texts:
-        if len(text.split()) == 1:
-            issues.append(f"The anchor text '{text}' is too short.")
-            solutions.append("Use more descriptive anchor texts.")
-            examples.append(f"Expand on '{text}' to provide more context or detail.")
-    
-    for text in anchor_texts:
-        if len(text.split()) > 8:
-            issues.append(f"The anchor text '{text}' is too long and might not be user-friendly.")
-            solutions.append("Shorten the anchor text while retaining its meaning.")
-            examples.append(f"Consider a more concise version of '{text}'.")
-    
-    return issues, solutions, examples
+    issues, solutions, examples = []
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
