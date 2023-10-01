@@ -31,14 +31,16 @@ def get_gpt_insights(content, content_type):
     )
     return response.choices[0].message['content'].strip()
 
-def TT(soup):
+def TT(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
     title_tag = soup.find('title')
     result = {
         "title": title_tag.text if title_tag else None,
         "message": "",
         "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.",
         "how_to_fix": "",
-        "audit_name": "Title Audit"
+        "audit_name": "Title Tag Audit"
     }
 
     if not title_tag:
@@ -55,7 +57,9 @@ def TT(soup):
 
     return result
 
-def MD(soup):
+def MD(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
     meta_description = soup.find('meta', attrs={"name": "description"})
     result = {
         "description": meta_description['content'] if meta_description else None,
@@ -111,8 +115,8 @@ url = st.text_input("Enter URL of the page to audit")
 if url:
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
-    title_results = TT(soup)
-    meta_results = MD(soup)
+    title_results = TT(url)
+    meta_results = MD(url)
     link_results = IL(url)
 
     results = [title_results, meta_results, link_results]
