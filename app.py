@@ -5,39 +5,28 @@ import requests
 # <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
 def TT(url):
-    """
-    Checks the title tag of the given page.
-    """
-    # Fetch the content of the page
     response = requests.get(url)
     if response.status_code != 200:
-        return {"title": None, "message": "Error: Could not fetch the page."}
+        return {"title": None, "message": "Error: Could not fetch the page.", "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.", "how_to_fix": "Ensure the URL is correct and the website is accessible."}
 
-    # Parse the content with BeautifulSoup
     soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Find the title tag
     title_tag = soup.find('title')
     
-    # Check if title tag is missing
-    if not title_tag:
-        return {"title": None, "message": "Fail: Title tag is missing."}
-    
-    title_length = len(title_tag.text)
-    
-    # Update to include "What it is" and "How to fix it" information
     result = {
-        "title": title_tag.text,
+        "title": title_tag.text if title_tag else None,
         "message": "",
         "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.",
         "how_to_fix": ""
     }
 
-    if title_length > 60:
-        result["message"] = f"Fail: Title tag is too long ({title_length} characters)."
+    if not title_tag:
+        result["message"] = "Fail: Title tag is missing."
+        result["how_to_fix"] = "Add a title tag to the head section of your HTML."
+    elif len(title_tag.text) > 60:
+        result["message"] = f"Fail: Title tag is too long ({len(title_tag.text)} characters)."
         result["how_to_fix"] = "Reduce the length of the title tag to 60 characters or fewer."
-    elif title_length < 10:
-        result["message"] = f"Fail: Title tag is too short ({title_length} characters)."
+    elif len(title_tag.text) < 10:
+        result["message"] = f"Fail: Title tag is too short ({len(title_tag.text)} characters)."
         result["how_to_fix"] = "Increase the length of the title tag to at least 10 characters."
     else:
         result["message"] = "Pass: Title tag is within the recommended length."
@@ -47,39 +36,28 @@ def TT(url):
 # <><><><><><><> START OF FUNCTION MD <><><><><><><>
 
 def MD(url):
-    """
-    Checks the meta description of the given page.
-    """
-    # Fetch the content of the page
     response = requests.get(url)
     if response.status_code != 200:
-        return {"description": None, "message": "Error: Could not fetch the page."}
+        return {"description": None, "message": "Error: Could not fetch the page.", "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.", "how_to_fix": "Ensure the URL is correct and the website is accessible."}
 
-    # Parse the content with BeautifulSoup
     soup = BeautifulSoup(response.content, 'html.parser')
-    
-    # Find the meta description tag
     meta_description = soup.find('meta', attrs={"name": "description"})
     
-    # Check if meta description is missing
-    if not meta_description or not meta_description.get('content'):
-        return {"description": None, "message": "Fail: Meta description is missing."}
-    
-    description_length = len(meta_description['content'])
-    
-    # Update to include "What it is" and "How to fix it" information
     result = {
-        "description": meta_description['content'],
+        "description": meta_description['content'] if meta_description else None,
         "message": "",
         "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.",
         "how_to_fix": ""
     }
 
-    if description_length > 160:
-        result["message"] = f"Fail: Meta description is too long ({description_length} characters)."
+    if not meta_description or not meta_description.get('content'):
+        result["message"] = "Fail: Meta description is missing."
+        result["how_to_fix"] = "Add a meta description tag to the head section of your HTML with a relevant description of the page content."
+    elif len(meta_description['content']) > 160:
+        result["message"] = f"Fail: Meta description is too long ({len(meta_description['content'])} characters)."
         result["how_to_fix"] = "Reduce the length of the meta description to 160 characters or fewer."
-    elif description_length < 50:
-        result["message"] = f"Fail: Meta description is too short ({description_length} characters)."
+    elif len(meta_description['content']) < 50:
+        result["message"] = f"Fail: Meta description is too short ({len(meta_description['content'])} characters)."
         result["how_to_fix"] = "Increase the length of the meta description to at least 50 characters."
     else:
         result["message"] = "Pass: Meta description is within the recommended length."
@@ -89,20 +67,10 @@ def MD(url):
 # <><><><><><><> RUN AUDITS FUNCTION <><><><><><><>
 
 def run_audits(url):
-    results = []
-
-    # Run title tag check
-    results.append(TT(url))
-    
-    # Run meta description check
-    results.append(MD(url))
-
-    return results
+    return [TT(url), MD(url)]
 
 # Streamlit App
 st.title("Single Page SEO Auditor")
-
-# Input for the URL
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
