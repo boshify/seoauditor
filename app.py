@@ -34,9 +34,9 @@ def MD(url):
         return None
 
 def IL(url):
-    # This is a placeholder for your Linking Audit logic
-    # You'd replace the logic here with the actual implementation
-    return "Linking Audit results go here"
+    # Linking Audit logic
+    insights = get_gpt_insights(f"Analyze the internal linking of the webpage: {url}")
+    return insights
 
 def AnchorText(url):
     response = requests.get(url)
@@ -51,15 +51,13 @@ url = st.text_input("Enter URL of the page to audit")
 if url:
     with st.spinner("Analyzing..."):
         # Title Tag Audit
-        with st.container():
-            st.subheader("🏷️ Title Tag Audit")
+        with st.expander("🏷️ Title Tag Audit"):
             title, title_insights = TT(url)
             st.write(f"**Title Tag Content:** {title}")
             st.write(f"**GPT Insights:** {title_insights}")
 
         # Meta Description Audit
-        with st.container():
-            st.subheader("📝 Meta Description Audit")
+        with st.expander("📝 Meta Description Audit"):
             meta_desc = MD(url)
             if meta_desc:
                 st.write(f"**Meta Description Content:** {meta_desc}")
@@ -67,14 +65,12 @@ if url:
                 st.write("❌ Meta description is missing.")
 
         # Linking Audit
-        with st.container():
-            st.subheader("🔗 Linking Audit")
+        with st.expander("🔗 Linking Audit"):
             linking_results = IL(url)
             st.write(linking_results)
 
         # Anchor Text Audit
-        with st.container():
-            st.subheader("⚓ Anchor Text Audit")
+        with st.expander("⚓ Anchor Text Audit"):
             anchor_texts, anchor_insights = AnchorText(url)
             st.write(f"**Sample Anchor Texts:** {', '.join(anchor_texts[:5])} and more...")
             st.write(f"**GPT Insights:** {anchor_insights}")
