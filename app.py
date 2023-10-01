@@ -6,31 +6,27 @@ import openai
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
+# <><><><><><><> GPT Insights Function <><><><><><><>
+
 def get_gpt_insights(content, content_type):
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
         {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide an optimized version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, only output the better version and no additional text except for 'Try This:'."}
     ]
+
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo-16k",
         messages=messages
     )
+    
     return response.choices[0].message['content'].strip()
+
+# <><><><><><><> Title Tag Function <><><><><><><>
 
 def TT(url):
     response = requests.get(url)
-    if response.status_code != 200:
-        return {
-            "title": None, 
-            "message": "Error: Could not fetch the page.", 
-            "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.", 
-            "how_to_fix": "Ensure the URL is correct and the website is accessible.",
-            "audit_name": "Title Tag Audit"
-        }
-
     soup = BeautifulSoup(response.content, 'html.parser')
     title_tag = soup.find('title')
-    
     result = {
         "title": title_tag.text if title_tag else None,
         "message": "",
@@ -53,17 +49,10 @@ def TT(url):
 
     return result
 
+# <><><><><><><> Meta Description Function <><><><><><><>
+
 def MD(url):
     response = requests.get(url)
-    if response.status_code != 200:
-        return {
-            "description": None, 
-            "message": "Error: Could not fetch the page.", 
-            "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.", 
-            "how_to_fix": "Ensure the URL is correct and the website is accessible.",
-            "audit_name": "Meta Description Audit"
-        }
-
     soup = BeautifulSoup(response.content, 'html.parser')
     meta_description = soup.find('meta', attrs={"name": "description"})
     
@@ -89,19 +78,24 @@ def MD(url):
 
     return result
 
+# <><><><><><><> Internal Linking Function <><><><><><><>
+
 def IL(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
+    links = soup.find_all('a', href=True)
 
     broken_links = []
-    for a in soup.find_all('a', href=True):
+    progress = st.progress(0)
+    for index, a in enumerate(links):
         link = a['href']
         try:
-            r = requests.head(link, allow_redirects=True)
+            r = requests.head(link, allow_redirects=True, timeout=5)
             if r.status_code != 200:
                 broken_links.append(link)
         except:
             broken_links.append(link)
+        progress.progress((index + 1) / len(links))
 
     result = {
         "message": "",
@@ -118,6 +112,8 @@ def IL(url):
 
     return result
 
+# <><><><><><><> Run Audits Function <><><><><><><>
+
 def run_audits(url):
     return [TT(url), MD(url), IL(url)]
 
@@ -130,15 +126,14 @@ if url:
     for result in results:
         st.write("---")  # Line break
         st.subheader(result["audit_name"])  # Displaying the custom audit name
-
         if 'title' in result and result["title"]:
-            st.info(f"**Title Tag Content:**\n```{result['title']}```")
+            st.info(f"**Title Tag Content:** {result['title']}")
             insights = get_gpt_insights(result["title"], "title tag")
-            st.info(f"**GPT Insights:**\n{insights}")
+            st.info(f"**GPT Insights:** {insights}")
         elif 'description' in result and result["description"]:
-            st.info(f"**Meta Description Content:**\n```{result['description']}```")
+            st.info(f"**Meta Description Content:** {result['description']}")
             insights = get_gpt_insights(result["description"], "meta description")
-            st.info(f"**GPT Insights:**\n{insights}")
+            st.info(f"**GPT Insights:** {insights}")
 
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
 
