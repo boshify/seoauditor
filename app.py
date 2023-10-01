@@ -116,7 +116,7 @@ def AnchorTextAudit(url):
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     generic_texts = ["click here", "read more", "here", "link", "more"]
-    issues, solutions, examples = []
+    issues, solutions, examples = [], [], []
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
