@@ -2,6 +2,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import openai
+from tenacity import retry, wait_fixed, stop_after_attempt
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
@@ -85,6 +86,14 @@ def MD(url):
 
     return result
 
+@retry(wait=wait_fixed(3), stop=stop_after_attempt(3))
+def get_link_status(link):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    }
+    response = requests.get(link, headers=headers, allow_redirects=True, timeout=10)
+    return response.status_code
+
 def IL(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -106,8 +115,8 @@ def IL(url):
             link = base_url + link
 
         try:
-            r = requests.get(link, allow_redirects=True, timeout=5)
-            if r.status_code >= 400:
+            status = get_link_status(link)
+            if status >= 400:
                 error_links.append(link)
         except:
             error_links.append(link)
@@ -129,30 +138,27 @@ def IL(url):
         result["message"] = "Fail: Found broken or incorrect links."
         result["how_to_fix"] = f"Fix or remove the following broken links: {', '.join(error_links)}"
     else:
-        result["message"] = "Pass: No broken links found."
+        result["message"] = "Pass: No broken internal links found."
 
     return result
-
-def run_audits(url):
-    return [TT(url), MD(url), IL(url)]
 
 # Streamlit App
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
-    results = run_audits(url)
+    results = [TT(url), MD(url), IL(url)]
     for result in results:
-        st.write("---")  # Line break
+        st.write("<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>")  # Barrier
         st.subheader(result["audit_name"])  # Displaying the custom audit name
 
         if 'title' in result and result["title"]:
-            st.info(f"**Title Tag Content:** {result['title']}")
-            insights = get_gpt_insights(result["title"], "title tag")
-            st.info(f"**GPT Insights:** {insights}")
+            st.info(f"**Title Tag Content:**\n```{result['title']}```")
+            gpt_insights = get_gpt_insights(result["title"], "title tag")
+            st.info(f"**GPT Insights:** {gpt_insights}")
         elif 'description' in result and result["description"]:
-            st.info(f"**Meta Description Content:** {result['description']}")
-            insights = get_gpt_insights(result["description"], "meta description")
-            st.info(f"**GPT Insights:** {insights}")
-
+            st.info(f"**Meta Description Content:**\n```{result['description']}```")
+            gpt_insights = get_gpt_insights(result["description"], "meta description")
+            st.info(f"**GPT Insights:** {gpt_insights}")
+        
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
