@@ -28,7 +28,7 @@ def generate_answers(question, source_code, model="gpt-3.5-turbo-16k"):
     response = openai.ChatCompletion.create(
         model=model,
         messages=messages,
-        max_tokens=150  # Adjust the max tokens based on your requirements
+        max_tokens=1500  # Adjust the max tokens based on your requirements
     )
     return response.choices[0].message['content'].strip()
 
