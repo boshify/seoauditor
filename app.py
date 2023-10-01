@@ -126,20 +126,21 @@ def IL(url):
             if not any(ext in link for ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']):
                 resource_as_link.append(link)
 
-    # Construct the results message
+        # Construct the results message
     messages = []
     if error_links:
-        messages.append(f"Error accessing links:\n{'\n'.join(error_links)}")
+        messages.append("Error accessing links:\n" + '\n'.join(error_links))
     if long_links:
-        messages.append(f"Very long URLs:\n{'\n'.join(long_links)}")
+        messages.append("Very long URLs:\n" + '\n'.join(long_links))
     if broken_links:
-        messages.append(f"Broken links:\n{'\n'.join(broken_links)}")
+        messages.append("Broken links:\n" + '\n'.join(broken_links))
     if len(visible_links) > 100:  # Arbitrary number for "too many" links
         messages.append("This page has too many on-page links.")
     if resource_as_link:
-        messages.append(f"Resources formatted as page links:\n{'\n'.join(resource_as_link)}")
+        messages.append("Resources formatted as page links:\n" + '\n'.join(resource_as_link))
     if img_links:
-        messages.append(f"Images as links:\n{'\n'.join(img_links)}")
+        messages.append("Images as links:\n" + '\n'.join(img_links))
+
 
     result = {
         "message": "\n\n".join(messages),
