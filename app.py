@@ -44,29 +44,69 @@ def LinkingAudit(url):
     if not main_content:
         main_content = soup.find('article') or soup.find('section')
 
-    # Extract internal links within the main content
-    internal_links = [a['href'] for a in main_content.find_all('a') if a['href'].startswith(url)]
+    issues = []
     
-    num_links = len(internal_links)
-    word_count = len(main_content.text.split())
+    # Extract all links within the main content
+    links = main_content.find_all('a')
 
-    # Assess the number of links based on content length
-    recommended_links = word_count // 250  # One link per 250 words as a basic heuristic
+    # Check for too many on-page links
+    if len(links) > 100: # Here, I'm using 100 as a threshold, which can be adjusted.
+        issues.append("This page has too many on-page links.")
 
-    if num_links < recommended_links:
-        issue = f"There are only {num_links} internal links in a content of {word_count} words."
-        solution = f"It's recommended to have approximately one internal link every 250 words. Consider adding more relevant internal links."
-        example = "For instance, if discussing 'SEO strategies', link to an article on your site that delves deeper into that topic."
-    elif num_links > recommended_links * 2:  # Heuristic: more than twice the recommended links might be excessive
-        issue = f"There are {num_links} internal links in a content of {word_count} words."
-        solution = f"Too many links can overwhelm readers and look spammy to search engines. Consider reducing the number of links."
-        example = "If multiple links point to the same destination, consider consolidating them."
-    else:
-        issue = "The number of internal links seems appropriate for the content length."
-        solution = "Maintain this balanced approach to internal linking."
-        example = ""
+    for link in links:
+        href = link.get('href')
+        # Check for long URLs
+        if len(href) > 2000: # 2000 is a heuristic.
+            issues.append(f"Link URL on this page is too long: {href}")
 
-    return issue, solution, example
+        # Check for non-descriptive anchor text
+        anchor_text = link.string
+        generic_texts = ["click here", "read more", "here", "link", "more"]
+        if anchor_text and anchor_text.lower() in generic_texts:
+            issues.append(f"Link on this page has non-descriptive anchor text: {anchor_text}")
+
+        # Check for mixed content (HTTPS page linking to HTTP)
+        if url.startswith('https:') and href.startswith('http:'):
+            issues.append(f"Links on this HTTPS page lead to an HTTP page: {href}")
+
+        # Check status of external links
+        if not href.startswith(url):
+            try:
+                ext_response = requests.head(href, allow_redirects=True, timeout=5)
+                if ext_response.status_code == 403:
+                    issues.append(f"Links to external page {href} returned a 403 HTTP status code.")
+                if ext_response.status_code == 404:
+                    issues.append(f"External link on this page is broken: {href}")
+            except requests.RequestException:
+                issues.append(f"Couldn't access the external link: {href}")
+
+    # Check external JS and CSS files
+    js_files = main_content.find_all('script', src=True)
+    css_files = main_content.find_all('link', rel='stylesheet', href=True)
+
+    for resource in js_files + css_files:
+        href = resource.get('src') or resource.get('href')
+        try:
+            ext_response = requests.head(href, allow_redirects=True, timeout=5)
+            if ext_response.status_code == 404:
+                issues.append(f"Broken external {resource.name.upper()} file linked from this page: {href}")
+        except requests.RequestException:
+            issues.append(f"Couldn't access the external {resource.name.upper()} file: {href}")
+
+    # Check external images
+    img_tags = main_content.find_all('img', src=True)
+    for img_tag in img_tags:
+        href = img_tag.get('src')
+        try:
+            ext_response = requests.head(href, allow_redirects=True, timeout=5)
+            if ext_response.status_code == 404:
+                issues.append(f"External image linked from this page is broken: {href}")
+        except requests.RequestException:
+            issues.append(f"Couldn't access the external image: {href}")
+
+    # You can further add checks for hreflang links or any other specific requirements here.
+    
+    return issues
 
 def AnchorTextAudit(url):
     response = requests.get(url)
