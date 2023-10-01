@@ -20,12 +20,18 @@ def crawl_page(url):
 # Function to generate answers using GPT-3
 def generate_answers(question, source_code, model="gpt-3.5-turbo-16k"):
     combined_prompt = f"Here's the source code of a webpage:\n{source_code}\n\nQuestion: {question}\nAnswer:"
-    response = openai.Completion.create(
-        engine=model,
-        prompt=combined_prompt,
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant that can analyze web page source code."},
+        {"role": "user", "content": combined_prompt}
+    ]
+    
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages,
         max_tokens=150  # Adjust the max tokens based on your requirements
     )
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
+
 
 # Main Streamlit app
 st.title("SEO Auditor")
