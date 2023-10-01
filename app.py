@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
+# ------------------------------ OpenAI GPT-3 Function ------------------------------
 def get_gpt_insights(prompt):
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
@@ -18,6 +19,7 @@ def get_gpt_insights(prompt):
     )
     return response.choices[0].message['content'].strip()
 
+# ------------------------------ Title Tag Audit Function ------------------------------
 def TT(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -37,6 +39,7 @@ def TT(url):
     
     return title, insights
 
+# ------------------------------ Meta Description Audit Function ------------------------------
 def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -63,6 +66,7 @@ def MD(url):
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
+# ------------------------------ Linking Audit Function ------------------------------
 def validate_link(base_url, href):
     # Convert relative URLs to absolute URLs
     full_url = urljoin(base_url, href)
@@ -106,6 +110,7 @@ def LinkingAudit(url):
 
     return structured_issues
 
+# ------------------------------ Anchor Text Audit Function ------------------------------
 def AnchorTextAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -116,40 +121,46 @@ def AnchorTextAudit(url):
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     generic_texts = ["click here", "read more", "here", "link", "more"]
-    issues, solutions, examples = [], [], []
-    
-    # Check for generic anchor texts
-    for text in anchor_texts:
-        if text.lower() in generic_texts:
-            issues.append(f"The anchor text '{text}' is too generic.")
-            solutions.append("Use more descriptive anchor texts.")
-            examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
 
-    # Check for overoptimized anchor texts
-    from collections import Counter
-    anchor_text_count = Counter(anchor_texts)
-    for text, count in anchor_text_count.items():
-        if count > 5:
-            issues.append(f"The anchor text '{text}' is repeated {count} times. It might be overoptimized.")
-            solutions.append("Diversify your anchor texts.")
-            examples.append(f"Instead of using '{text}' multiple times, consider other variations or synonyms.")
-    
-    # Check for short anchor texts
-    for text in anchor_texts:
-        if len(text.split()) == 1:
-            issues.append(f"The anchor text '{text}' is too short.")
-            solutions.append("Use more descriptive anchor texts.")
-            examples.append(f"Consider expanding on '{text}' to provide more context or detail.")
-    
-    # Check for long anchor texts
-    for text in anchor_texts:
-        if len(text.split()) > 8:
-            issues.append(f"The anchor text '{text}' is too long and might not be user-friendly.")
-            solutions.append("Shorten the anchor text while retaining its meaning.")
-            examples.append(f"Consider a more concise version of '{text}'.")
-    
+    issues = [text for text in anchor_texts if text.lower() in generic_texts]
+    solutions = [get_gpt_insights(f"Provide a solution for generic anchor text: {text}") for text in issues]
+    examples = [get_gpt_insights(f"Provide an example solution for generic anchor text: {text}") for text in issues]
+
     return issues, solutions, examples
 
+# ------------------------------ PageSpeed Insights Functions ------------------------------
+def get_pagespeed_insights(url):
+    API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    API_KEY = st.secrets["pagespeed_api_key"]  # Assuming you added it to secrets.toml as "pagespeed_api_key"
+    
+    params = {
+        "url": url,
+        "key": API_KEY
+    }
+    
+    response = requests.get(API_ENDPOINT, params=params)
+    data = response.json()
+    
+    return data
+
+def analyze_pagespeed_data(data):
+    crux_metrics = {
+        "First Contentful Paint": data['loadingExperience']['metrics']['FIRST_CONTENTFUL_PAINT_MS']['category'],
+        "First Input Delay": data['loadingExperience']['metrics']['FIRST_INPUT_DELAY_MS']['category']
+    }
+
+    lighthouse_metrics = {
+        'First Contentful Paint': data['lighthouseResult']['audits']['first-contentful-paint']['displayValue'],
+        'Speed Index': data['lighthouseResult']['audits']['speed-index']['displayValue'],
+        'Time To Interactive': data['lighthouseResult']['audits']['interactive']['displayValue'],
+        'First Meaningful Paint': data['lighthouseResult']['audits']['first-meaningful-paint']['displayValue'],
+        'First CPU Idle': data['lighthouseResult']['audits']['first-cpu-idle']['displayValue'],
+        'Estimated Input Latency': data['lighthouseResult']['audits']['estimated-input-latency']['displayValue']
+    }
+
+    return crux_metrics, lighthouse_metrics
+
+# ------------------------------ Streamlit UI Rendering ------------------------------
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
@@ -189,3 +200,16 @@ if url:
                 st.write("**Solution:**", solution)
                 st.write("**Example:**", example)
                 st.write("---")  # Adds a horizontal line for separation
+
+        # PageSpeed Insights Audit
+        with st.expander("⚡ PageSpeed Insights"):
+            pagespeed_data = get_pagespeed_insights(url)
+            crux_metrics, lighthouse_metrics = analyze_pagespeed_data(pagespeed_data)
+            
+            st.write("## Chrome User Experience Report Results")
+            for key, value in crux_metrics.items():
+                st.write(f"**{key}:** {value}")
+            
+            st.write("## Lighthouse Results")
+            for key, value in lighthouse_metrics.items():
+                st.write(f"**{key}:** {value}")
