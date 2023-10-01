@@ -162,7 +162,7 @@ def AnchorTextAudit(url):
     from collections import Counter
     anchor_text_count = Counter(anchor_texts)
     for text, count in anchor_text_count.items():
-        if count > 5:  # Arbitrary threshold
+        if count > 5:
             issues.append(f"The anchor text '{text}' is repeated {count} times. It might be overoptimized.")
             solutions.append("Diversify your anchor texts.")
             examples.append(f"Instead of using '{text}' multiple times, consider other variations or synonyms.")
@@ -172,11 +172,17 @@ def AnchorTextAudit(url):
         if len(text.split()) == 1:
             issues.append(f"The anchor text '{text}' is too short.")
             solutions.append("Use more descriptive anchor texts.")
-            examples.append(f"Expand on '{text}' to provide more context or detail.")
+            # Provide more specific examples based on the anchor text context
+            if text.lower() == "linkedin":
+                examples.append(f"Consider using 'Visit my LinkedIn profile'.")
+            elif text.lower() == "newsletter":
+                examples.append(f"Consider using 'Subscribe to our newsletter'.")
+            else:
+                examples.append(f"Expand on '{text}' to provide more context or detail.")
     
     # Check for long anchor texts
     for text in anchor_texts:
-        if len(text.split()) > 8:  # Arbitrary threshold
+        if len(text.split()) > 8:
             issues.append(f"The anchor text '{text}' is too long and might not be user-friendly.")
             solutions.append("Shorten the anchor text while retaining its meaning.")
             examples.append(f"Consider a more concise version of '{text}'.")
@@ -219,3 +225,5 @@ if url:
                 st.write("**Issue:**", issue)
                 st.write("**Solution:**", solution)
                 st.write("**Example:**", example)
+                st.write("---")  # Adds a horizontal line for separation
+
