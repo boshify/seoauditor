@@ -6,13 +6,13 @@ import openai
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
-def get_rating_and_tip(content, content_type):
+def get_gpt_insights(content, content_type):
     """
-    Uses GPT-3.5-turbo-16k to rate the content and provide a quick tip for improvement.
+    Uses GPT-3.5-turbo-16k to rate the content and provide an optimized version.
     """
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
-        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide an optimized version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, put a line break first and then only output the better version and no additional text except for 'Try This:'."}
+        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide an optimized version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, only output the better version and no additional text except for 'Try This:'."}
     ]
 
     response = openai.ChatCompletion.create(
@@ -21,8 +21,6 @@ def get_rating_and_tip(content, content_type):
     )
     
     return response.choices[0].message['content'].strip()
-
-# <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
 def TT(url):
     response = requests.get(url)
@@ -60,8 +58,6 @@ def TT(url):
 
     return result
 
-# <><><><><><><> START OF FUNCTION MD <><><><><><><>
-
 def MD(url):
     response = requests.get(url)
     if response.status_code != 200:
@@ -98,8 +94,6 @@ def MD(url):
 
     return result
 
-# <><><><><><><> RUN AUDITS FUNCTION <><><><><><><>
-
 def run_audits(url):
     return [TT(url), MD(url)]
 
@@ -115,11 +109,11 @@ if url:
 
         if 'title' in result and result["title"]:
             st.info(f"**Title Tag Content:**\n```{result['title']}```")
-            rating_tip = get_rating_and_tip(result["title"], "title tag")
-            st.info(f"**Rating & Tip:** {rating_tip}")
+            insights = get_gpt_insights(result["title"], "title tag")
+            st.info(f"**GPT Insights:**\n{insights}")
         elif 'description' in result and result["description"]:
             st.info(f"**Meta Description Content:**\n```{result['description']}```")
-            rating_tip = get_rating_and_tip(result["description"], "meta description")
-            st.info(f"**Rating & Tip:** {rating_tip}")
+            insights = get_gpt_insights(result["description"], "meta description")
+            st.info(f"**GPT Insights:**\n{insights}")
         
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
