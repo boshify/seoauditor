@@ -36,11 +36,11 @@ def TT(url):
     
     # Check if title is too long or too short
     if title_length > 60:
-        return f"Fail: Title tag is too long ({title_length} characters)."
+        return f"Title: {title_tag.text}\nFail: Title tag is too long ({title_length} characters)."
     elif title_length < 10:
-        return f"Fail: Title tag is too short ({title_length} characters)."
+        return f"Title: {title_tag.text}\nFail: Title tag is too short ({title_length} characters)."
     
-    return "Pass: Title tag is within the recommended length."
+    return f"Title: {title_tag.text}\nPass: Title tag is within the recommended length."
 
 # <><><><><><><> END OF FUNCTION TT <><><><><><><>
 
