@@ -6,6 +6,20 @@ import openai
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
+# Progress bar messages
+PROGRESS_MESSAGES = [
+    "Casting SEO spells...",
+    "Unleashing digital spiders...",
+    "Diving into the sea of meta tags...",
+    "Whispering to the web spirits...",
+    "Riding the waves of backlinks...",
+    "Decoding the matrix of HTML...",
+    "Unraveling the web's yarn...",
+    "Consulting the algorithmic oracle...",
+    "Fetching the wisdom of search gurus...",
+    "Brewing the SEO potion..."
+]
+
 # <><><><><><><> GPT Insights Function <><><><><><><>
 
 def get_gpt_insights(content, content_type):
@@ -27,6 +41,7 @@ def TT(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     title_tag = soup.find('title')
+    
     result = {
         "title": title_tag.text if title_tag else None,
         "message": "",
@@ -86,16 +101,19 @@ def IL(url):
     links = soup.find_all('a', href=True)
 
     broken_links = []
-    progress = st.progress(0)
+    progress_bar = st.progress(0)
     for index, a in enumerate(links):
         link = a['href']
         try:
-            r = requests.head(link, allow_redirects=True, timeout=5)
+            r = requests.get(link, allow_redirects=True, timeout=5)
             if r.status_code != 200:
                 broken_links.append(link)
         except:
             broken_links.append(link)
-        progress.progress((index + 1) / len(links))
+        
+        # Update the progress bar with rotating messages
+        progress_bar.progress((index + 1) / len(links))
+        st.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
 
     result = {
         "message": "",
@@ -136,4 +154,3 @@ if url:
             st.info(f"**GPT Insights:** {insights}")
 
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
-
