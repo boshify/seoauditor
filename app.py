@@ -1,38 +1,49 @@
-import streamlit as st
-import requests
 from bs4 import BeautifulSoup
+import requests
 
-# Function to crawl a webpage and return its source code
-def fetch_page_content(url):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
-    response = requests.get(url, headers=headers)
-    return response.text if response.status_code == 200 else None
+# <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
-# Check for duplicate title tags (for demonstration purposes, we're just checking if there's exactly one title tag)
-def check_title_tags(soup):
-    title_tags = soup.find_all('title')
-    return "Pass" if len(title_tags) == 1 else "Fail"
+def TT(url):
+    """
+    Checks the title tag of the given page.
+    - Determines if the title tag is missing.
+    - Checks if the title tag's content is too long (more than 60 characters).
+    - Checks if it's too short (less than 10 characters).
+    
+    Parameters:
+    - url (str): The URL of the page to check.
 
-def main():
-    st.title("Single Page SEO Auditor")
+    Returns:
+    - str: A message indicating the result of the check.
+    """
+    # Fetch the content of the page
+    response = requests.get(url)
+    if response.status_code != 200:
+        return "Error: Could not fetch the page."
 
-    url = st.text_input("Enter the URL of the page to audit")
+    # Parse the content with BeautifulSoup
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    # Find the title tag
+    title_tag = soup.find('title')
+    
+    # Check if title tag is missing
+    if not title_tag:
+        return "Fail: Title tag is missing."
+    
+    title_length = len(title_tag.text)
+    
+    # Check if title is too long or too short
+    if title_length > 60:
+        return f"Fail: Title tag is too long ({title_length} characters)."
+    elif title_length < 10:
+        return f"Fail: Title tag is too short ({title_length} characters)."
+    
+    return "Pass: Title tag is within the recommended length."
 
-    if st.button("Audit"):
-        if not url:
-            st.warning("Please enter a URL.")
-        else:
-            content = fetch_page_content(url)
-            if content:
-                soup = BeautifulSoup(content, 'html.parser')
-                
-                # Title tag check
-                title_check_result = check_title_tags(soup)
-                st.write(f"Title Tag Check: {title_check_result}")
+# <><><><><><><> END OF FUNCTION TT <><><><><><><>
 
-                # Here, you can add more checks as needed.
-
-if __name__ == "__main__":
-    main()
+# Example usage:
+url = "https://example.com"
+result = TT(url)
+print(result)
