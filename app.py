@@ -158,16 +158,22 @@ def analyze_pagespeed_data(data):
     # Extract Lighthouse metrics
     if 'lighthouseResult' in data and 'audits' in data['lighthouseResult']:
         audits = data['lighthouseResult']['audits']
-        lighthouse_metrics = {
-            'First Contentful Paint': audits['first-contentful-paint']['displayValue'],
-            'Speed Index': audits['speed-index']['displayValue'],
-            'Time To Interactive': audits['interactive']['displayValue'],
-            'First Meaningful Paint': audits['first-meaningful-paint']['displayValue'],
-            'First CPU Idle': audits['first-cpu-idle']['displayValue'],
-            'Estimated Input Latency': audits['estimated-input-latency']['displayValue']
+        
+        lighthouse_keys = {
+            'First Contentful Paint': 'first-contentful-paint',
+            'Speed Index': 'speed-index',
+            'Time To Interactive': 'interactive',
+            'First Meaningful Paint': 'first-meaningful-paint',
+            'First CPU Idle': 'first-cpu-idle',
+            'Estimated Input Latency': 'estimated-input-latency'
         }
+        
+        for display_key, audit_key in lighthouse_keys.items():
+            if audit_key in audits and 'displayValue' in audits[audit_key]:
+                lighthouse_metrics[display_key] = audits[audit_key]['displayValue']
 
     return crux_metrics, lighthouse_metrics
+
 
 # ------------------------------ Streamlit UI Rendering ------------------------------
 st.title("Single Page SEO Auditor")
