@@ -218,16 +218,19 @@ if url:
         with st.expander("🏷️ Title Tag Audit"):
             title, title_insights = TT(url)
             st.write(f"**Title Tag Content:** {title}")
-            st.write(f"**GPT Insights:** {title_insights}")
+            if title_insights:
+                st.write(f"**Recommendations:** {title_insights}")
 
         # Meta Description Audit
         with st.expander("📝 Meta Description Audit"):
             meta_desc, meta_desc_insights = MD(url)
             if meta_desc:
                 st.write(f"**Meta Description Content:** {meta_desc}")
-                st.write(f"**GPT Insights:** {meta_desc_insights}")
+                if meta_desc_insights:
+                    st.write(f"**Recommendations:** {meta_desc_insights}")
             else:
                 st.write(meta_desc_insights)
+
 
         # Linking Audit
         with st.expander("🔗 Linking Audit"):
