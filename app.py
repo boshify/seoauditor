@@ -21,19 +21,47 @@ def TT(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     title = soup.title.string
-    insights = get_gpt_insights(f"Analyze the title tag: {title}")
+    insights = ""
+    
+    # Check title length
+    if len(title) < 50:
+        insights += "The title tag is shorter than the recommended 50-60 characters. "
+        insights += "Consider adding more descriptive keywords or phrases to improve its clarity. "
+    elif len(title) > 60:
+        insights += "The title tag is longer than the recommended 50-60 characters. "
+        insights += "Consider shortening it while retaining its main message. "
+    
+    # You can add more title-specific checks and recommendations here
+
     return title, insights
 
 def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
-    insights = None
+    insights = ""
+
     if meta_description:
-        insights = get_gpt_insights(f"Analyze the meta description: {meta_description['content']}")
-        return meta_description['content'], insights
+        desc = meta_description['content']
+        
+        # Check meta description length
+        if len(desc) < 150:
+            insights += "The meta description is shorter than the recommended 150-160 characters. "
+            insights += "Consider expanding it to provide a more comprehensive summary of the page. "
+        elif len(desc) > 160:
+            insights += "The meta description is longer than the recommended 150-160 characters. "
+            insights += "Consider shortening it to make it concise. "
+        
+        # Check for a call to action
+        ctas = ['learn more', 'discover', 'find out', 'get started', 'read on']
+        if not any(cta in desc.lower() for cta in ctas):
+            insights += "Consider adding a call to action in the meta description to entice users. "
+        
+        # You can add more meta description-specific checks and recommendations here
+
+        return desc, insights
     else:
-        return None, "❌ Meta description is missing."
+        return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
 def LinkingAudit(url):
     response = requests.get(url)
