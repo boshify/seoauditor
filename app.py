@@ -10,32 +10,26 @@ openai.api_key = st.secrets["openai_api_key"]
 PROGRESS_MESSAGES = [
     "Casting SEO spells...",
     "Unleashing digital spiders...",
-    "Diving into the sea of meta tags...",
-    "Whispering to the web spirits...",
-    "Riding the waves of backlinks...",
-    "Decoding the matrix of HTML...",
-    "Unraveling the web's yarn...",
-    "Consulting the algorithmic oracle...",
-    "Fetching the wisdom of search gurus...",
+    "Diving into meta tags...",
+    "Whispering to web spirits...",
+    "Riding backlink waves...",
+    "Decoding HTML matrix...",
+    "Unraveling web yarn...",
+    "Consulting the algorithm...",
+    "Fetching search wisdom...",
     "Brewing the SEO potion..."
 ]
-
-# <><><><><><><> GPT Insights Function <><><><><><><>
 
 def get_gpt_insights(content, content_type):
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
         {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide an optimized version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, only output the better version and no additional text except for 'Try This:'."}
     ]
-
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo-16k",
         messages=messages
     )
-    
     return response.choices[0].message['content'].strip()
-
-# <><><><><><><> Title Tag Function <><><><><><><>
 
 def TT(url):
     response = requests.get(url)
@@ -64,8 +58,6 @@ def TT(url):
 
     return result
 
-# <><><><><><><> Meta Description Function <><><><><><><>
-
 def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -93,27 +85,35 @@ def MD(url):
 
     return result
 
-# <><><><><><><> Internal Linking Function <><><><><><><>
-
 def IL(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.content, 'html.parser')
     links = soup.find_all('a', href=True)
 
+    base_url = url.rsplit('/', 1)[0]
     broken_links = []
     progress_bar = st.progress(0)
+    progress_text = st.empty()
+
     for index, a in enumerate(links):
         link = a['href']
+
+        # Handle relative URLs
+        if link.startswith('/'):
+            link = base_url + link
+
         try:
             r = requests.get(link, allow_redirects=True, timeout=5)
             if r.status_code != 200:
                 broken_links.append(link)
         except:
             broken_links.append(link)
-        
+
         # Update the progress bar with rotating messages
         progress_bar.progress((index + 1) / len(links))
-        st.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
+        progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
+
+    progress_text.empty()
 
     result = {
         "message": "",
@@ -129,8 +129,6 @@ def IL(url):
         result["message"] = "Pass: No broken links found."
 
     return result
-
-# <><><><><><><> Run Audits Function <><><><><><><>
 
 def run_audits(url):
     return [TT(url), MD(url), IL(url)]
