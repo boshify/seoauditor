@@ -17,18 +17,6 @@ def get_gpt_insights(prompt):
     )
     return response.choices[0].message['content'].strip()
 
-def validate_link(href):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
-    try:
-        response = requests.head(href, headers=headers, allow_redirects=True, timeout=5)
-        if response.status_code in [403, 405]:  # 403: Forbidden, 405: Method Not Allowed
-            response = requests.get(href, headers=headers, allow_redirects=True, timeout=5)
-        return response.status_code
-    except requests.RequestException:
-        return None
-
 def TT(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -64,15 +52,13 @@ def LinkingAudit(url):
         status_code = validate_link(href)
         if status_code:
             issue_prompt = f"Analyze link with status {status_code}: {href}"
-        else:
-            issue_prompt = f"Couldn't access the external link: {href}"
-        insights = get_gpt_insights(issue_prompt)
+            insights = get_gpt_insights(issue_prompt)
         
-        structured_issues.append({
-            "issue": insights,
-            "solution": get_gpt_insights(f"Provide a solution for the link issue: {href}"),
-            "example": get_gpt_insights(f"Provide an example solution for the link issue: {href}")
-        })
+            structured_issues.append({
+                "issue": insights,
+                "solution": get_gpt_insights(f"Provide a solution for the link issue: {href}"),
+                "example": get_gpt_insights(f"Provide an example solution for the link issue: {href}")
+            })
 
     return structured_issues
 
@@ -82,15 +68,37 @@ def AnchorTextAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section')
+        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
+    generic_texts = ["click here", "read more", "here", "link", "more"]
     issues, solutions, examples = [], [], []
     
     for text in anchor_texts:
-        issues.append(get_gpt_insights(f"Analyze anchor text: {text}"))
-        solutions.append(get_gpt_insights(f"Provide a solution for anchor text: {text}"))
-        examples.append(get_gpt_insights(f"Provide an example solution for anchor text: {text}"))
+        if text.lower() in generic_texts:
+            issues.append(f"The anchor text '{text}' is too generic.")
+            solutions.append("Use more descriptive anchor texts.")
+            examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
+
+    from collections import Counter
+    anchor_text_count = Counter(anchor_texts)
+    for text, count in anchor_text_count.items():
+        if count > 5:
+            issues.append(f"The anchor text '{text}' is repeated {count} times. It might be overoptimized.")
+            solutions.append("Diversify your anchor texts.")
+            examples.append(f"Instead of using '{text}' multiple times, consider other variations or synonyms.")
+    
+    for text in anchor_texts:
+        if len(text.split()) == 1:
+            issues.append(f"The anchor text '{text}' is too short.")
+            solutions.append("Use more descriptive anchor texts.")
+            examples.append(f"Expand on '{text}' to provide more context or detail.")
+    
+    for text in anchor_texts:
+        if len(text.split()) > 8:
+            issues.append(f"The anchor text '{text}' is too long and might not be user-friendly.")
+            solutions.append("Shorten the anchor text while retaining its meaning.")
+            examples.append(f"Consider a more concise version of '{text}'.")
     
     return issues, solutions, examples
 
