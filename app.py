@@ -92,7 +92,7 @@ def validate_link(base_url, href):
     
     return None
 
-# Modified LinkingAudit function for debugging purposes:
+# Modified LinkingAudit function with cleaned up debug outputs:
 
 def LinkingAudit(url):
     response = requests.get(url)
@@ -102,20 +102,20 @@ def LinkingAudit(url):
     if not main_content:
         main_content = soup.find('article') or soup.find('section')
 
-    # Debug: Check the number of links found
-    st.write(f"DEBUG: Number of links found: {len(main_content.find_all('a'))}")
+    # Display the number of links found
+    st.write(f"Number of links found: {len(main_content.find_all('a'))}")
 
     structured_issues = []
 
     links = main_content.find_all('a')
     for link in links:
         href = link.get('href')
-        # Debug: Output the href being checked
-        st.write(f"DEBUG: Checking link: {href}")
+        # Display the href being checked
+        st.write(f"Checking link: {href}")
         status_code = validate_link(url, href)  # Pass the base URL as well
         if status_code:
-            # Debug: Output the status code and href of the broken link
-            st.write(f"DEBUG: Broken link detected with status code {status_code}: {href}")
+            # Display the status code and href of the broken link
+            st.write(f"Broken link detected with status code {status_code}: {href}")
             issue_prompt = f"Analyze link with status {status_code}: {href}"
             insights = get_gpt_insights(issue_prompt)
         
@@ -127,8 +127,7 @@ def LinkingAudit(url):
 
     return structured_issues
 
-# This modified function will provide some debug outputs in the Streamlit app itself, helping to identify where the issue might be.
-
+# This modified function will provide cleaner outputs in the Streamlit app.
 
 def AnchorTextAudit(url):
     response = requests.get(url)
