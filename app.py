@@ -32,68 +32,58 @@ def get_gpt_insights(content, content_type):
     return response.choices[0].message['content'].strip()
 
 def TT(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-        title_tag = soup.find('title')
-        
-        result = {
-            "title": title_tag.text if title_tag else None,
-            "message": "",
-            "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.",
-            "how_to_fix": "",
-            "audit_name": "Title Tag Audit"
-        }
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    title_tag = soup.find('title')
+    
+    result = {
+        "title": title_tag.text if title_tag else None,
+        "message": "",
+        "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.",
+        "how_to_fix": "",
+        "audit_name": "Title Tag Audit"
+    }
 
-        if not title_tag:
-            result["message"] = "Fail: Title tag is missing."
-            result["how_to_fix"] = "Add a title tag to the head section of your HTML."
-        elif len(title_tag.text) > 60:
-            result["message"] = f"Fail: Title tag is too long ({len(title_tag.text)} characters)."
-            result["how_to_fix"] = "Reduce the length of the title tag to 60 characters or fewer."
-        elif len(title_tag.text) < 10:
-            result["message"] = f"Fail: Title tag is too short ({len(title_tag.text)} characters)."
-            result["how_to_fix"] = "Increase the length of the title tag to at least 10 characters."
-        else:
-            result["message"] = "Pass: Title tag is within the recommended length."
+    if not title_tag:
+        result["message"] = "Fail: Title tag is missing."
+        result["how_to_fix"] = "Add a title tag to the head section of your HTML."
+    elif len(title_tag.text) > 60:
+        result["message"] = f"Fail: Title tag is too long ({len(title_tag.text)} characters)."
+        result["how_to_fix"] = "Reduce the length of the title tag to 60 characters or fewer."
+    elif len(title_tag.text) < 10:
+        result["message"] = f"Fail: Title tag is too short ({len(title_tag.text)} characters)."
+        result["how_to_fix"] = "Increase the length of the title tag to at least 10 characters."
+    else:
+        result["message"] = "Pass: Title tag is within the recommended length."
 
-        return result
-    except requests.RequestException as e:
-        st.warning(f"Error fetching the URL. Details: {e}")
-        return None
+    return result
 
 def MD(url):
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.content, 'html.parser')
-        meta_description = soup.find('meta', attrs={"name": "description"})
-        
-        result = {
-            "description": meta_description['content'] if meta_description else None,
-            "message": "",
-            "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.",
-            "how_to_fix": "",
-            "audit_name": "Meta Description Audit"
-        }
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    meta_description = soup.find('meta', attrs={"name": "description"})
+    
+    result = {
+        "description": meta_description['content'] if meta_description else None,
+        "message": "",
+        "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.",
+        "how_to_fix": "",
+        "audit_name": "Meta Description Audit"
+    }
 
-        if not meta_description or not meta_description.get('content'):
-            result["message"] = "Fail: Meta description is missing."
-            result["how_to_fix"] = "Add a meta description tag to the head section of your HTML with a relevant description of the page content."
-        elif len(meta_description['content']) > 160:
-            result["message"] = f"Fail: Meta description is too long ({len(meta_description['content'])} characters)."
-            result["how_to_fix"] = "Reduce the length of the meta description to 160 characters or fewer."
-        elif len(meta_description['content']) < 50:
-            result["message"] = f"Fail: Meta description is too short ({len(meta_description['content'])} characters)."
-            result["how_to_fix"] = "Increase the length of the meta description to at least 50 characters."
-        else:
-            result["message"] = "Pass: Meta description is within the recommended length."
+    if not meta_description or not meta_description.get('content'):
+        result["message"] = "Fail: Meta description is missing."
+        result["how_to_fix"] = "Add a meta description tag to the head section of your HTML with a relevant description of the page content."
+    elif len(meta_description['content']) > 160:
+        result["message"] = f"Fail: Meta description is too long ({len(meta_description['content'])} characters)."
+        result["how_to_fix"] = "Reduce the length of the meta description to 160 characters or fewer."
+    elif len(meta_description['content']) < 50:
+        result["message"] = f"Fail: Meta description is too short ({len(meta_description['content'])} characters)."
+        result["how_to_fix"] = "Increase the length of the meta description to at least 50 characters."
+    else:
+        result["message"] = "Pass: Meta description is within the recommended length."
 
-        return result
-    except requests.RequestException as e:
-        st.warning(f"Error fetching the URL. Details: {e}")
-        return None
+    return result
 
 def IL(url):
     try:
@@ -101,95 +91,78 @@ def IL(url):
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # Get all links, scripts, images, and CSS references
-        link_elements = soup.find_all(['a', 'script', 'link', 'img'])
+        # Filtering links that are part of the main content (within paragraph, div, and image tags)
+        link_elements = soup.find_all(['a', 'img'], recursive=True)
         
         error_messages = []
+        broken_links = []
+        very_long_links = []
+        access_errors = []
+        resource_as_page_links = []
         
         progress_bar = st.progress(0)
         progress_text = st.empty()
         total_links = len(link_elements)
-        
-        for index, element in enumerate(link_elements):
-            link_url = None
-            
-            if element.name == 'a':
-                link_url = element.get('href')
-            elif element.name == 'script' or element.name == 'img':
-                link_url = element.get('src')
-            elif element.name == 'link':
-                link_url = element.get('href')
 
+        for index, element in enumerate(link_elements):
+            link_url = element.get('href' if element.name == 'a' else 'src')
+            
             # Check if URL is valid and not empty
             if not link_url:
                 continue
 
-            # Check if the link is external
-            if not link_url.startswith(('http', '//')):
-                continue
-
-            # Check for HTTPS to HTTP links
-            if url.startswith('https') and link_url.startswith('http://'):
-                error_messages.append(f"Link from HTTPS to non-secure page: {link_url}")
-
             # Check for long URLs
             if len(link_url) > 200:
-                error_messages.append(f"Very long URL: {link_url}")
+                very_long_links.append(f"Very long URL: {link_url}")
 
             try:
                 r = requests.get(link_url, allow_redirects=True, timeout=5)
-                
-                # Check for 403 status for external resources
-                if r.status_code == 403:
-                    error_messages.append(f"External resource forbidden (403): {link_url}")
 
                 # Check for broken links
-                elif r.status_code >= 400:
-                    error_messages.append(f"Broken link (status {r.status_code}): {link_url}")
+                if r.status_code >= 400:
+                    broken_links.append(f"Broken link (status {r.status_code}): {link_url}")
 
             except requests.RequestException as e:
-                error_messages.append(f"Error accessing link ({e}): {link_url}")
+                access_errors.append(f"Error accessing link ({e}): {link_url}")
+
+            # Check for resources formatted as page links
+            if element.name == 'img' and element.parent.name == 'a':
+                resource_as_page_links.append(f"Resource img with URL {link_url} is formatted as a page link.")
 
             # Update the progress bar with rotating messages
             progress_bar.progress((index + 1) / total_links)
             progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
 
-        # Check for too many on-page links
-        if len(link_elements) > 100:
-            error_messages.append("This page has too many on-page links.")
-
-        # Check for resources formatted as page links
-        for element in soup.find_all(['script', 'link', 'img']):
-            if element.parent.name == 'a':
-                error_messages.append(f"Resource {element.name} with URL {element.get('src' or 'href')} is formatted as a page link.")
-
-        # Check for incorrect hreflang links
-        for element in soup.find_all('link', attrs={"hreflang": True}):
-            hreflang_url = element.get('href')
-            try:
-                r = requests.get(hreflang_url, allow_redirects=True, timeout=5)
-                if r.status_code >= 400:
-                    error_messages.append(f"Incorrect hreflang link with URL {hreflang_url}")
-            except requests.RequestException as e:
-                error_messages.append(f"Error accessing hreflang link ({e}): {hreflang_url}")
-
         # Clear progress once done
         progress_bar.empty()
         progress_text.empty()
 
+        # Check for too many on-page links
+        if len(link_elements) > 100:
+            error_messages.append("This page has too many on-page links.")
+
+        # Group the messages
+        grouped_errors = []
+        if access_errors:
+            grouped_errors.append('\n'.join(access_errors))
+        if broken_links:
+            grouped_errors.append('\n'.join(broken_links))
+        if very_long_links:
+            grouped_errors.append('\n'.join(very_long_links))
+        if resource_as_page_links:
+            grouped_errors.append('\n'.join(resource_as_page_links))
+        if error_messages:
+            grouped_errors.append('\n'.join(error_messages))
+
         result = {
-            "message": "",
+            "message": "\n\n".join(grouped_errors),
             "what_it_is": "Linking checks for the page.",
-            "how_to_fix": "",
+            "how_to_fix": "Each link issue is categorized. Review the specific issue category for recommendations.",
             "audit_name": "Linking Audit"
         }
 
-        if error_messages:
-            result["message"] = "\n\n".join(error_messages)
-        else:
-            result["message"] = "Pass: No linking issues found."
-
         return result
+
     except requests.RequestException as e:
         return {
             "message": f"Error fetching the URL. Details: {e}",
@@ -221,3 +194,4 @@ if url:
             st.info(f"**GPT Insights:** {insights}")
 
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
+
