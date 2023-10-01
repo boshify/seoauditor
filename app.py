@@ -35,27 +35,62 @@ def MD(url):
     else:
         return None, "❌ Meta description is missing."
 
-def IL(url):
-    # Linking Audit logic
+def LinkingAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.find('main')  # Extracting main content
+    
+    # If no <main> tag, try to infer main content
+    if not main_content:
+        main_content = soup.find('article') or soup.find('section')
+
+    # Extract internal links within the main content
     internal_links = [a['href'] for a in main_content.find_all('a') if a['href'].startswith(url)]
     
-    insights = get_gpt_insights(f"Analyze the internal links in the main content of the webpage: {url}. The links are: {', '.join(internal_links)}")
-    return insights
+    num_links = len(internal_links)
+    word_count = len(main_content.text.split())
 
-def AnchorText(url):
+    # Assess the number of links based on content length
+    recommended_links = word_count // 250  # One link per 250 words as a basic heuristic
+
+    if num_links < recommended_links:
+        issue = f"There are only {num_links} internal links in a content of {word_count} words."
+        solution = f"It's recommended to have approximately one internal link every 250 words. Consider adding more relevant internal links."
+        example = "For instance, if discussing 'SEO strategies', link to an article on your site that delves deeper into that topic."
+    elif num_links > recommended_links * 2:  # Heuristic: more than twice the recommended links might be excessive
+        issue = f"There are {num_links} internal links in a content of {word_count} words."
+        solution = f"Too many links can overwhelm readers and look spammy to search engines. Consider reducing the number of links."
+        example = "If multiple links point to the same destination, consider consolidating them."
+    else:
+        issue = "The number of internal links seems appropriate for the content length."
+        solution = "Maintain this balanced approach to internal linking."
+        example = ""
+
+    return issue, solution, example
+
+def AnchorTextAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.find('main')  # Extracting main content
-    if main_content:
-        anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
-    else:
-        anchor_texts = [a.string for a in soup.find_all('a') if a.string]
     
-    recommendations = get_gpt_insights(f"Provide recommendations for optimizing the anchor texts: {', '.join(anchor_texts[:5])} and more")
-    return anchor_texts, recommendations
+    # If no <main> tag, try to infer main content
+    if not main_content:
+        main_content = soup.find('article') or soup.find('section')
+
+    # Extract anchor texts within the main content
+    anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
+
+    generic_texts = ["click here", "read more", "here", "link", "more"]
+    
+    issues, solutions, examples = [], [], []
+    
+    for text in anchor_texts:
+        if text.lower() in generic_texts:
+            issues.append(f"The anchor text '{text}' is too generic.")
+            solutions.append("Use more descriptive anchor texts.")
+            examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
+
+    return issues, solutions, examples
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
