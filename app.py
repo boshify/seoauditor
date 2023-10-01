@@ -12,7 +12,7 @@ def get_rating_and_tip(content, content_type):
     """
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
-        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide a better version. Your rating should include the text 'out of five'. Do not say i would give it. Just output the rating. For your better version, only output the better version and no additional text."}
+        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide a better version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, only output the better version and no additional text except for 'Try This:'."}
     ]
 
     response = openai.ChatCompletion.create(
