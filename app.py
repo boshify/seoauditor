@@ -92,8 +92,6 @@ def validate_link(base_url, href):
     
     return None
 
-# Modified LinkingAudit function with cleaned up debug outputs:
-
 def LinkingAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -127,7 +125,6 @@ def LinkingAudit(url):
 
     return structured_issues
 
-# This modified function will provide cleaner outputs in the Streamlit app.
 
 def AnchorTextAudit(url):
     response = requests.get(url)
