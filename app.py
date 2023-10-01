@@ -5,9 +5,18 @@ import requests
 # <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
 def TT(url):
+    """
+    Checks the title tag of the given page.
+    """
     response = requests.get(url)
     if response.status_code != 200:
-        return {"title": None, "message": "Error: Could not fetch the page.", "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.", "how_to_fix": "Ensure the URL is correct and the website is accessible."}
+        return {
+            "title": None, 
+            "message": "Error: Could not fetch the page.", 
+            "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.", 
+            "how_to_fix": "Ensure the URL is correct and the website is accessible.",
+            "audit_name": "Title Tag Audit"
+        }
 
     soup = BeautifulSoup(response.content, 'html.parser')
     title_tag = soup.find('title')
@@ -16,7 +25,8 @@ def TT(url):
         "title": title_tag.text if title_tag else None,
         "message": "",
         "what_it_is": "The title tag provides a brief summary of the content of the page and is displayed in search engine results and browser tabs.",
-        "how_to_fix": ""
+        "how_to_fix": "",
+        "audit_name": "Title Tag Audit"
     }
 
     if not title_tag:
@@ -36,9 +46,18 @@ def TT(url):
 # <><><><><><><> START OF FUNCTION MD <><><><><><><>
 
 def MD(url):
+    """
+    Checks the meta description of the given page.
+    """
     response = requests.get(url)
     if response.status_code != 200:
-        return {"description": None, "message": "Error: Could not fetch the page.", "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.", "how_to_fix": "Ensure the URL is correct and the website is accessible."}
+        return {
+            "description": None, 
+            "message": "Error: Could not fetch the page.", 
+            "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.", 
+            "how_to_fix": "Ensure the URL is correct and the website is accessible.",
+            "audit_name": "Meta Description Audit"
+        }
 
     soup = BeautifulSoup(response.content, 'html.parser')
     meta_description = soup.find('meta', attrs={"name": "description"})
@@ -47,7 +66,8 @@ def MD(url):
         "description": meta_description['content'] if meta_description else None,
         "message": "",
         "what_it_is": "The meta description provides a brief summary of the content of the page and is displayed in search engine results.",
-        "how_to_fix": ""
+        "how_to_fix": "",
+        "audit_name": "Meta Description Audit"
     }
 
     if not meta_description or not meta_description.get('content'):
@@ -77,12 +97,11 @@ if url:
     results = run_audits(url)
     for result in results:
         st.write("---")  # Line break
+        st.subheader(result["audit_name"])  # Displaying the custom audit name
+
         if 'title' in result and result["title"]:
-            st.subheader("Title Tag Content")
-            st.info(f"```{result['title']}```")
+            st.info(f"**Title Tag Content:**\n```{result['title']}```")
         elif 'description' in result and result["description"]:
-            st.subheader("Meta Description Content")
-            st.info(f"```{result['description']}```")
+            st.info(f"**Meta Description Content:**\n```{result['description']}```")
         
-        st.subheader("Audit Result")
-        st.info(f"**{result['message']}**\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
+        st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
