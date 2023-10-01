@@ -28,10 +28,12 @@ def MD(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
+    insights = None
     if meta_description:
-        return meta_description['content']
+        insights = get_gpt_insights(f"Analyze the meta description: {meta_description['content']}")
+        return meta_description['content'], insights
     else:
-        return None
+        return None, "❌ Meta description is missing."
 
 def IL(url):
     # Linking Audit logic
@@ -41,7 +43,11 @@ def IL(url):
 def AnchorText(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    anchor_texts = [a.string for a in soup.find_all('a') if a.string]
+    main_content = soup.find('main')  # Assuming main content is within the 'main' tag
+    if main_content:
+        anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
+    else:
+        anchor_texts = [a.string for a in soup.find_all('a') if a.string]
     insights = get_gpt_insights(f"Analyze the anchor texts: {', '.join(anchor_texts[:5])} and more")
     return anchor_texts, insights
 
@@ -58,11 +64,12 @@ if url:
 
         # Meta Description Audit
         with st.expander("📝 Meta Description Audit"):
-            meta_desc = MD(url)
+            meta_desc, meta_desc_insights = MD(url)
             if meta_desc:
                 st.write(f"**Meta Description Content:** {meta_desc}")
+                st.write(f"**GPT Insights:** {meta_desc_insights}")
             else:
-                st.write("❌ Meta description is missing.")
+                st.write(meta_desc_insights)
 
         # Linking Audit
         with st.expander("🔗 Linking Audit"):
