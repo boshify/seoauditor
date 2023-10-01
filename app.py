@@ -20,7 +20,23 @@ PROGRESS_MESSAGES = [
     "Brewing the SEO potion..."
 ]
 
-# ... [get_gpt_insights, TT, MD functions remain unchanged] ...
+def TT(url):
+    # Placeholder function, fill in with actual functionality
+    return {
+        "message": "Title analysis not implemented yet.",
+        "what_it_is": "Analysis of the webpage title.",
+        "how_to_fix": "N/A",
+        "audit_name": "Title Audit"
+    }
+
+def MD(url):
+    # Placeholder function, fill in with actual functionality
+    return {
+        "message": "Meta description analysis not implemented yet.",
+        "what_it_is": "Analysis of the webpage's meta description.",
+        "how_to_fix": "N/A",
+        "audit_name": "Meta Description Audit"
+    }
 
 def IL(url):
     response = requests.get(url)
