@@ -145,7 +145,7 @@ def AnchorTextAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section')
+        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     generic_texts = ["click here", "read more", "here", "link", "more"]
@@ -157,6 +157,9 @@ def AnchorTextAudit(url):
             solutions.append("Use more descriptive anchor texts.")
             examples.append(f"Instead of '{text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'.")
 
+    # Debug statement to check if the function is analyzing any anchor texts
+    print(f"Analyzed {len(anchor_texts)} anchor texts. Found {len(issues)} issues.")
+    
     return issues, solutions, examples
 
 st.title("Single Page SEO Auditor")
