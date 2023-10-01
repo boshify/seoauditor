@@ -38,90 +38,117 @@ def MD(url):
 def LinkingAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.find('main')  # Extracting main content
-    
-    # If no <main> tag, try to infer main content
+    main_content = soup.find('main')
+
     if not main_content:
         main_content = soup.find('article') or soup.find('section')
 
-    issues = []
-    
-    # Extract all links within the main content
-    links = main_content.find_all('a')
+    structured_issues = []
 
-    # Check for too many on-page links
-    if len(links) > 100: # Here, I'm using 100 as a threshold, which can be adjusted.
-        issues.append("This page has too many on-page links.")
+    links = main_content.find_all('a')
+    if len(links) > 100:
+        structured_issues.append({
+            "issue": "This page has too many on-page links.",
+            "solution": "Consider reducing the number of links for better user experience.",
+            "example": "If multiple links point to the same destination, consider consolidating them."
+        })
 
     for link in links:
         href = link.get('href')
-        # Check for long URLs
-        if len(href) > 2000: # 2000 is a heuristic.
-            issues.append(f"Link URL on this page is too long: {href}")
+        if len(href) > 2000:
+            structured_issues.append({
+                "issue": f"Link URL on this page is too long: {href}",
+                "solution": "Consider using URL shorteners or restructuring the URL.",
+                "example": "Avoid using unnecessary parameters or overly descriptive paths."
+            })
 
-        # Check for non-descriptive anchor text
         anchor_text = link.string
         generic_texts = ["click here", "read more", "here", "link", "more"]
         if anchor_text and anchor_text.lower() in generic_texts:
-            issues.append(f"Link on this page has non-descriptive anchor text: {anchor_text}")
+            structured_issues.append({
+                "issue": f"Link on this page has non-descriptive anchor text: {anchor_text}",
+                "solution": "Use more descriptive anchor texts.",
+                "example": f"Instead of '{anchor_text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'."
+            })
 
-        # Check for mixed content (HTTPS page linking to HTTP)
         if url.startswith('https:') and href.startswith('http:'):
-            issues.append(f"Links on this HTTPS page lead to an HTTP page: {href}")
+            structured_issues.append({
+                "issue": f"Links on this HTTPS page lead to an HTTP page: {href}",
+                "solution": "Update links to use HTTPS to ensure secure content delivery.",
+                "example": "Replace 'http://' with 'https://' in the link if the destination supports it."
+            })
 
-        # Check status of external links
         if not href.startswith(url):
             try:
                 ext_response = requests.head(href, allow_redirects=True, timeout=5)
                 if ext_response.status_code == 403:
-                    issues.append(f"Links to external page {href} returned a 403 HTTP status code.")
+                    structured_issues.append({
+                        "issue": f"Links to external page {href} returned a 403 HTTP status code.",
+                        "solution": "Check the external link's access permissions.",
+                        "example": "Ensure you are not linking to private or restricted content."
+                    })
                 if ext_response.status_code == 404:
-                    issues.append(f"External link on this page is broken: {href}")
+                    structured_issues.append({
+                        "issue": f"External link on this page is broken: {href}",
+                        "solution": "Update or remove the broken link.",
+                        "example": "Link to an updated resource or related content."
+                    })
             except requests.RequestException:
-                issues.append(f"Couldn't access the external link: {href}")
+                structured_issues.append({
+                    "issue": f"Couldn't access the external link: {href}",
+                    "solution": "Ensure the external link is correct and accessible.",
+                    "example": "Verify the link's URL and destination."
+                })
 
-    # Check external JS and CSS files
     js_files = main_content.find_all('script', src=True)
     css_files = main_content.find_all('link', rel='stylesheet', href=True)
-
     for resource in js_files + css_files:
         href = resource.get('src') or resource.get('href')
         try:
             ext_response = requests.head(href, allow_redirects=True, timeout=5)
             if ext_response.status_code == 404:
-                issues.append(f"Broken external {resource.name.upper()} file linked from this page: {href}")
+                structured_issues.append({
+                    "issue": f"Broken external {resource.name.upper()} file linked from this page: {href}",
+                    "solution": "Update the link to the external resource.",
+                    "example": "Ensure you are linking to the correct and updated {resource.name.upper()} file."
+                })
         except requests.RequestException:
-            issues.append(f"Couldn't access the external {resource.name.upper()} file: {href}")
+            structured_issues.append({
+                "issue": f"Couldn't access the external {resource.name.upper()} file: {href}",
+                "solution": "Ensure the link to the external {resource.name.upper()} file is correct.",
+                "example": "Verify the resource's URL and accessibility."
+            })
 
-    # Check external images
     img_tags = main_content.find_all('img', src=True)
     for img_tag in img_tags:
         href = img_tag.get('src')
         try:
             ext_response = requests.head(href, allow_redirects=True, timeout=5)
             if ext_response.status_code == 404:
-                issues.append(f"External image linked from this page is broken: {href}")
+                structured_issues.append({
+                    "issue": f"External image linked from this page is broken: {href}",
+                    "solution": "Update the link to the external image.",
+                    "example": "Ensure you are linking to the correct and accessible image."
+                })
         except requests.RequestException:
-            issues.append(f"Couldn't access the external image: {href}")
+            structured_issues.append({
+                "issue": f"Couldn't access the external image: {href}",
+                "solution": "Ensure the link to the external image is correct.",
+                "example": "Verify the image's URL and accessibility."
+            })
 
-    # You can further add checks for hreflang links or any other specific requirements here.
-    
-    return issues
+    return structured_issues
 
 def AnchorTextAudit(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.find('main')  # Extracting main content
-    
-    # If no <main> tag, try to infer main content
+    main_content = soup.find('main')
+
     if not main_content:
         main_content = soup.find('article') or soup.find('section')
 
-    # Extract anchor texts within the main content
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
-
     generic_texts = ["click here", "read more", "here", "link", "more"]
-    
     issues, solutions, examples = [], [], []
     
     for text in anchor_texts:
@@ -154,15 +181,16 @@ if url:
 
         # Linking Audit
         with st.expander("🔗 Linking Audit"):
-            issue, solution, example = LinkingAudit(url)
-            st.write(issue)
-            st.write(solution)
-            st.write(example)
+            linking_issues = LinkingAudit(url)
+            for issue_data in linking_issues:
+                st.write("**Issue:**", issue_data["issue"])
+                st.write("**Solution:**", issue_data["solution"])
+                st.write("**Example:**", issue_data["example"])
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
             issues, solutions, examples = AnchorTextAudit(url)
             for issue, solution, example in zip(issues, solutions, examples):
-                st.write(issue)
-                st.write(solution)
-                st.write(example)
+                st.write("**Issue:**", issue)
+                st.write("**Solution:**", solution)
+                st.write("**Example:**", example)
