@@ -1,3 +1,4 @@
+import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 
@@ -43,7 +44,13 @@ def TT(url):
 
 # <><><><><><><> END OF FUNCTION TT <><><><><><><>
 
-# Example usage:
-url = "https://example.com"
-result = TT(url)
-print(result)
+# Streamlit App
+st.title("Single Page SEO Auditor")
+
+# Input for the URL
+url = st.text_input("Enter URL of the page to audit")
+
+if url:
+    if st.button("Check Title Tag"):
+        result = TT(url)
+        st.write(result)
