@@ -37,19 +37,25 @@ def MD(url):
 
 def IL(url):
     # Linking Audit logic
-    insights = get_gpt_insights(f"Analyze the internal linking of the webpage: {url}")
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    main_content = soup.find('main')  # Extracting main content
+    internal_links = [a['href'] for a in main_content.find_all('a') if a['href'].startswith(url)]
+    
+    insights = get_gpt_insights(f"Analyze the internal links in the main content of the webpage: {url}. The links are: {', '.join(internal_links)}")
     return insights
 
 def AnchorText(url):
     response = requests.get(url)
     soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.find('main')  # Assuming main content is within the 'main' tag
+    main_content = soup.find('main')  # Extracting main content
     if main_content:
         anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     else:
         anchor_texts = [a.string for a in soup.find_all('a') if a.string]
-    insights = get_gpt_insights(f"Analyze the anchor texts: {', '.join(anchor_texts[:5])} and more")
-    return anchor_texts, insights
+    
+    recommendations = get_gpt_insights(f"Provide recommendations for optimizing the anchor texts: {', '.join(anchor_texts[:5])} and more")
+    return anchor_texts, recommendations
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
