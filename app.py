@@ -7,19 +7,14 @@ import openai
 openai.api_key = st.secrets["openai_api_key"]
 
 def get_gpt_insights(content, content_type):
-    """
-    Uses GPT-3.5-turbo-16k to rate the content and provide an optimized version.
-    """
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
         {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide an optimized version. Your rating should include the text 'out of 5'. Do not say I would give it. Just output the rating. For your better version, only output the better version and no additional text except for 'Try This:'."}
     ]
-
     response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo-16k",
         messages=messages
     )
-    
     return response.choices[0].message['content'].strip()
 
 def TT(url):
@@ -94,8 +89,37 @@ def MD(url):
 
     return result
 
+def IL(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    broken_links = []
+    for a in soup.find_all('a', href=True):
+        link = a['href']
+        try:
+            r = requests.head(link, allow_redirects=True)
+            if r.status_code != 200:
+                broken_links.append(link)
+        except:
+            broken_links.append(link)
+
+    result = {
+        "message": "",
+        "what_it_is": "Internal linking refers to any links from one page of a domain that lead to another page within the same domain. It's crucial for both website navigation and SEO.",
+        "how_to_fix": "",
+        "audit_name": "Internal Linking Audit"
+    }
+
+    if broken_links:
+        result["message"] = "Fail: Found broken or incorrect links."
+        result["how_to_fix"] = f"Fix or remove the following broken links: {', '.join(broken_links)}"
+    else:
+        result["message"] = "Pass: No broken links found."
+
+    return result
+
 def run_audits(url):
-    return [TT(url), MD(url)]
+    return [TT(url), MD(url), IL(url)]
 
 # Streamlit App
 st.title("Single Page SEO Auditor")
@@ -115,5 +139,6 @@ if url:
             st.info(f"**Meta Description Content:**\n```{result['description']}```")
             insights = get_gpt_insights(result["description"], "meta description")
             st.info(f"**GPT Insights:**\n{insights}")
-        
+
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
+
