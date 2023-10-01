@@ -44,6 +44,25 @@ def TT(url):
 
 # <><><><><><><> END OF FUNCTION TT <><><><><><><>
 
+def run_audits(url):
+    """
+    Runs all available audit functions on the given URL and returns results.
+    
+    Parameters:
+    - url (str): The URL of the page to audit.
+
+    Returns:
+    - list: A list of results from all audit functions.
+    """
+    results = []
+
+    # Run title tag check
+    results.append(TT(url))
+
+    # More audit functions can be added here in the future...
+
+    return results
+
 # Streamlit App
 st.title("Single Page SEO Auditor")
 
@@ -51,6 +70,6 @@ st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
-    if st.button("Check Title Tag"):
-        result = TT(url)
+    results = run_audits(url)
+    for result in results:
         st.write(result)
