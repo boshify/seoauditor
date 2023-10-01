@@ -10,15 +10,17 @@ def get_rating_and_tip(content, content_type):
     """
     Uses GPT-3.5-turbo-16k to rate the content and provide a quick tip for improvement.
     """
-    prompt = f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide one quick tip to improve it."
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide one quick tip to improve it."}
+    ]
 
-    response = openai.Completion.create(
+    response = openai.ChatCompletion.create(
         model="gpt-3.5-turbo-16k",
-        prompt=prompt,
-        max_tokens=500
+        messages=messages
     )
     
-    return response.choices[0].text.strip()
+    return response.choices[0].message['content'].strip()
 
 # <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
