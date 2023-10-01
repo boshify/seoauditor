@@ -50,7 +50,7 @@ def LinkingAudit(url):
         structured_issues.append({
             "issue": "This page has too many on-page links.",
             "solution": "Consider reducing the number of links for better user experience.",
-            "example": "If multiple links point to the same destination, consider consolidating them."
+            "example": "If multiple links point to the same destination, consider consolidating them. For instance, combine multiple 'Read More' links into one comprehensive 'Resources' section."
         })
 
     for link in links:
@@ -59,23 +59,14 @@ def LinkingAudit(url):
             structured_issues.append({
                 "issue": f"Link URL on this page is too long: {href}",
                 "solution": "Consider using URL shorteners or restructuring the URL.",
-                "example": "Avoid using unnecessary parameters or overly descriptive paths."
-            })
-
-        anchor_text = link.string
-        generic_texts = ["click here", "read more", "here", "link", "more"]
-        if anchor_text and anchor_text.lower() in generic_texts:
-            structured_issues.append({
-                "issue": f"Link on this page has non-descriptive anchor text: {anchor_text}",
-                "solution": "Use more descriptive anchor texts.",
-                "example": f"Instead of '{anchor_text}', consider using 'Discover our SEO strategies' or 'Learn more about our services'."
+                "example": "Avoid using unnecessary parameters or overly descriptive paths. Use clean, descriptive paths like '/products' instead of '/products?id=123&category=456'."
             })
 
         if url.startswith('https:') and href.startswith('http:'):
             structured_issues.append({
                 "issue": f"Links on this HTTPS page lead to an HTTP page: {href}",
                 "solution": "Update links to use HTTPS to ensure secure content delivery.",
-                "example": "Replace 'http://' with 'https://' in the link if the destination supports it."
+                "example": f"Replace 'http://' with 'https://' in the link {href} if the destination supports it."
             })
 
         if not href.startswith(url):
