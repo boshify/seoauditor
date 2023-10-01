@@ -15,12 +15,12 @@ def TT(url):
     - url (str): The URL of the page to check.
 
     Returns:
-    - str: A message indicating the result of the check.
+    - dict: A dictionary with the title content and the result message.
     """
     # Fetch the content of the page
     response = requests.get(url)
     if response.status_code != 200:
-        return "Error: Could not fetch the page."
+        return {"title": None, "message": "Error: Could not fetch the page."}
 
     # Parse the content with BeautifulSoup
     soup = BeautifulSoup(response.content, 'html.parser')
@@ -30,17 +30,17 @@ def TT(url):
     
     # Check if title tag is missing
     if not title_tag:
-        return "Fail: Title tag is missing."
+        return {"title": None, "message": "Fail: Title tag is missing."}
     
     title_length = len(title_tag.text)
     
     # Check if title is too long or too short
     if title_length > 60:
-        return f"Title: {title_tag.text}\nFail: Title tag is too long ({title_length} characters)."
+        return {"title": title_tag.text, "message": f"Fail: Title tag is too long ({title_length} characters)."}
     elif title_length < 10:
-        return f"Title: {title_tag.text}\nFail: Title tag is too short ({title_length} characters)."
+        return {"title": title_tag.text, "message": f"Fail: Title tag is too short ({title_length} characters)."}
     
-    return f"Title: {title_tag.text}\nPass: Title tag is within the recommended length."
+    return {"title": title_tag.text, "message": "Pass: Title tag is within the recommended length."}
 
 # <><><><><><><> END OF FUNCTION TT <><><><><><><>
 
@@ -72,4 +72,8 @@ url = st.text_input("Enter URL of the page to audit")
 if url:
     results = run_audits(url)
     for result in results:
-        st.write(result)
+        if result["title"]:
+            st.subheader("Title Tag Content")
+            st.write(f"```{result['title']}```")
+        st.subheader("Audit Result")
+        st.markdown(f"**{result['message']}**")
