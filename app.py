@@ -163,12 +163,39 @@ def IL(url):
 
     result = {
         "message": gpt_insights,
-        "what_it_is": "Linking checks for the page.",
-        "how_to_fix": "Each link issue is categorized. Review the specific issue category for recommendations.",
         "audit_name": "Linking Audit"
     }
 
     return result
+
+def AnchorText(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    # Extract all anchor tags
+    anchor_elements = soup.find_all('a', href=True)
+    
+    # Collect all anchor texts
+    anchor_texts = [anchor.text.strip() for anchor in anchor_elements if anchor.text.strip()]
+    
+    # Combine anchor texts for GPT analysis
+    combined_texts = "\n".join(anchor_texts)
+    
+    # GPT prompt to analyze anchor texts
+    prompt = f"Analyze the following anchor texts and provide insights, analysis, and recommendations in markdown format: \n\n{combined_texts}"
+    
+    messages = [
+        {"role": "system", "content": "You are an SEO expert analyzing anchor texts."},
+        {"role": "user", "content": prompt}
+    ]
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo-16k",
+        messages=messages
+    )
+    return {
+        "message": response.choices[0].message['content'].strip(),
+        "audit_name": "Anchor Text Audit"
+    }
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
@@ -177,13 +204,15 @@ if url:
     title_results = TT(url)
     meta_results = MD(url)
     link_results = IL(url)
+    anchor_text_results = AnchorText(url)
 
-    results = [title_results, meta_results, link_results]
+    results = [title_results, meta_results, link_results, anchor_text_results]
 
     for result in results:
         st.write("---")
         st.subheader(result["audit_name"])
         
+        # Display Title and Meta Description specific sections
         if 'title' in result and result["title"]:
             st.info(f"**Title Tag Content:** {result['title']}")
             insights = get_gpt_insights(result["title"], "title tag")
@@ -193,4 +222,5 @@ if url:
             insights = get_gpt_insights(result["description"], "meta description")
             st.info(f"**GPT Insights:** {insights}")
 
-        st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
+        # Display results
+        st.info(f"**Result:** {result['message']}")
