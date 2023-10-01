@@ -11,8 +11,8 @@ def get_rating_and_tip(content, content_type):
     Uses GPT-3.5-turbo-16k to rate the content and provide a quick tip for improvement.
     """
     messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide one quick tip to improve it."}
+        {"role": "system", "content": "You are an SEO expert."},
+        {"role": "user", "content": f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide one quick tip to improve it. Your rating should include the text 'out of five'. Your tip should just be the recommended output like 'try:better idea'"}
     ]
 
     response = openai.ChatCompletion.create(
