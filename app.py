@@ -2,7 +2,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import openai
-
+from urllib.parse import urljoin
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
@@ -64,8 +64,6 @@ def MD(url):
         return desc, insights
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
-
-from urllib.parse import urljoin
 
 def validate_link(base_url, href):
     """
