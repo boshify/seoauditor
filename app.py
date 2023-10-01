@@ -1,13 +1,28 @@
 import streamlit as st
 from bs4 import BeautifulSoup
 import requests
+import openai
+
+# Initialize OpenAI with API key from Streamlit's secrets
+openai.api_key = st.secrets["openai_api_key"]
+
+def get_rating_and_tip(content, content_type):
+    """
+    Uses GPT-3.5-turbo-16k to rate the content and provide a quick tip for improvement.
+    """
+    prompt = f"Rate the {content_type} '{content}' on a scale of 1 to 5 and provide one quick tip to improve it."
+
+    response = openai.Completion.create(
+        model="gpt-3.5-turbo-16k",
+        prompt=prompt,
+        max_tokens=500
+    )
+    
+    return response.choices[0].text.strip()
 
 # <><><><><><><> START OF FUNCTION TT <><><><><><><>
 
 def TT(url):
-    """
-    Checks the title tag of the given page.
-    """
     response = requests.get(url)
     if response.status_code != 200:
         return {
@@ -46,9 +61,6 @@ def TT(url):
 # <><><><><><><> START OF FUNCTION MD <><><><><><><>
 
 def MD(url):
-    """
-    Checks the meta description of the given page.
-    """
     response = requests.get(url)
     if response.status_code != 200:
         return {
@@ -101,7 +113,11 @@ if url:
 
         if 'title' in result and result["title"]:
             st.info(f"**Title Tag Content:**\n```{result['title']}```")
+            rating_tip = get_rating_and_tip(result["title"], "title tag")
+            st.info(f"**Rating & Tip:** {rating_tip}")
         elif 'description' in result and result["description"]:
             st.info(f"**Meta Description Content:**\n```{result['description']}```")
+            rating_tip = get_rating_and_tip(result["description"], "meta description")
+            st.info(f"**Rating & Tip:** {rating_tip}")
         
         st.info(f"**Result:** {result['message']}\n\n*What it is:* {result['what_it_is']}\n\n*How to fix:* {result['how_to_fix']}")
