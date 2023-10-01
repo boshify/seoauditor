@@ -106,7 +106,11 @@ def IL(url):
         
         error_messages = []
         
-        for element in link_elements:
+        progress_bar = st.progress(0)
+        progress_text = st.empty()
+        total_links = len(link_elements)
+        
+        for index, element in enumerate(link_elements):
             link_url = None
             
             if element.name == 'a':
@@ -143,8 +147,12 @@ def IL(url):
                 elif r.status_code >= 400:
                     error_messages.append(f"Broken link (status {r.status_code}): {link_url}")
 
-            except requests.RequestException:
-                error_messages.append(f"Error accessing link: {link_url}")
+            except requests.RequestException as e:
+                error_messages.append(f"Error accessing link ({e}): {link_url}")
+
+            # Update the progress bar with rotating messages
+            progress_bar.progress((index + 1) / total_links)
+            progress_text.text(PROGRESS_MESSAGES[index % len(PROGRESS_MESSAGES)])
 
         # Check for too many on-page links
         if len(link_elements) > 100:
@@ -162,8 +170,12 @@ def IL(url):
                 r = requests.get(hreflang_url, allow_redirects=True, timeout=5)
                 if r.status_code >= 400:
                     error_messages.append(f"Incorrect hreflang link with URL {hreflang_url}")
-            except requests.RequestException:
-                error_messages.append(f"Error accessing hreflang link with URL {hreflang_url}")
+            except requests.RequestException as e:
+                error_messages.append(f"Error accessing hreflang link ({e}): {hreflang_url}")
+
+        # Clear progress once done
+        progress_bar.empty()
+        progress_text.empty()
 
         result = {
             "message": "",
@@ -173,7 +185,7 @@ def IL(url):
         }
 
         if error_messages:
-            result["message"] = "\n".join(error_messages)
+            result["message"] = "\n\n".join(error_messages)
         else:
             result["message"] = "Pass: No linking issues found."
 
