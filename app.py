@@ -1,62 +1,38 @@
 import streamlit as st
 import requests
-import openai
-
-# Set your OpenAI API key securely using Streamlit secrets.toml
-openai.api_key = st.secrets["openai_api_key"]
+from bs4 import BeautifulSoup
 
 # Function to crawl a webpage and return its source code
-def crawl_page(url):
+def fetch_page_content(url):
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
     response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return response.text
-    else:
-        st.error(f"Failed to fetch the page. Status code: {response.status_code}")
-        return None
+    return response.text if response.status_code == 200 else None
 
-# Function to generate answers using GPT-3
-def generate_answers(question, source_code, model="gpt-3.5-turbo-16k"):
-    combined_prompt = f"Here's the source code of a webpage:\n{source_code}\n\nQuestion: {question}\nAnswer:"
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant that can analyze web page source code."},
-        {"role": "user", "content": combined_prompt}
-    ]
-    
-    response = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        max_tokens=1500  # Adjust the max tokens based on your requirements
-    )
-    return response.choices[0].message['content'].strip()
+# Check for duplicate title tags (for demonstration purposes, we're just checking if there's exactly one title tag)
+def check_title_tags(soup):
+    title_tags = soup.find_all('title')
+    return "Pass" if len(title_tags) == 1 else "Fail"
 
+def main():
+    st.title("Single Page SEO Auditor")
 
-# Main Streamlit app
-st.title("SEO Auditor")
+    url = st.text_input("Enter the URL of the page to audit")
 
-# Initialize session states
-if 'url' not in st.session_state:
-    st.session_state.url = ''
+    if st.button("Audit"):
+        if not url:
+            st.warning("Please enter a URL.")
+        else:
+            content = fetch_page_content(url)
+            if content:
+                soup = BeautifulSoup(content, 'html.parser')
+                
+                # Title tag check
+                title_check_result = check_title_tags(soup)
+                st.write(f"Title Tag Check: {title_check_result}")
 
-if 'source_code' not in st.session_state:
-    st.session_state.source_code = ''
+                # Here, you can add more checks as needed.
 
-st.session_state.url = st.text_input("Enter URL", st.session_state.url)
-
-if st.button("Scan"):
-    if not st.session_state.url:
-        st.warning("Please enter a URL before scanning.")
-    else:
-        st.session_state.source_code = crawl_page(st.session_state.url)
-
-if st.session_state.source_code:
-    st.text("Page Source Code:")
-    st.code(st.session_state.source_code, language="html")
-
-    question = st.text_input("Enter your question about the page")
-    if st.button("Submit Question") and question:
-        answer = generate_answers(question, st.session_state.source_code)
-        st.text("Answers:")
-        st.write(answer)
+if __name__ == "__main__":
+    main()
