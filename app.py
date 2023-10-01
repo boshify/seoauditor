@@ -91,7 +91,7 @@ def IL(url):
     links = soup.find_all('a', href=True)
 
     base_url = url.rsplit('/', 1)[0]
-    broken_links = []
+    error_links = []
     progress_bar = st.progress(0)
     progress_text = st.empty()
 
@@ -104,10 +104,10 @@ def IL(url):
 
         try:
             r = requests.get(link, allow_redirects=True, timeout=5)
-            if r.status_code != 200:
-                broken_links.append(link)
+            if r.status_code >= 400:
+                error_links.append(link)
         except:
-            broken_links.append(link)
+            error_links.append(link)
 
         # Update the progress bar with rotating messages
         progress_bar.progress((index + 1) / len(links))
@@ -122,9 +122,9 @@ def IL(url):
         "audit_name": "Internal Linking Audit"
     }
 
-    if broken_links:
+    if error_links:
         result["message"] = "Fail: Found broken or incorrect links."
-        result["how_to_fix"] = f"Fix or remove the following broken links: {', '.join(broken_links)}"
+        result["how_to_fix"] = f"Fix or remove the following broken links: {', '.join(error_links)}"
     else:
         result["message"] = "Pass: No broken links found."
 
