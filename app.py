@@ -80,16 +80,11 @@ def LinkingAudit(url):
         base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
         
         links = [link for link in main_content.find_all('a', href=True) if not link['href'].startswith('#')]
-        for link in links:
-            href = link['href']
-            absolute_url = urljoin(base_url, href)
-            
-            if href.startswith('/') and base_url in absolute_url:
-                structured_issues.append({
-                    "issue": f"Relative internal link found: {absolute_url}",
-                    "solution": ""
-                })
 
+        # Check for any other potential issues with links (for now, we're skipping relative links)
+        # Add any other conditions as needed in the future.
+
+        # If no issues found, return empty list
         if not structured_issues:
             return []
 
