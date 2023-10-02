@@ -117,16 +117,25 @@ def AnchorTextAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup if none found
+        main_content = soup.find('article') or soup.find('section') or soup
 
     anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
     generic_texts = ["click here", "read more", "here", "link", "more"]
 
     issues = [text for text in anchor_texts if text.lower() in generic_texts]
-    solutions = [get_gpt_insights(f"Provide a solution for generic anchor text: {text}") for text in issues]
-    examples = [get_gpt_insights(f"Provide an example solution for generic anchor text: {text}") for text in issues]
+    
+    # Hardcoded solutions for generic anchor texts
+    generic_solutions = {
+        "click here": "Replace with descriptive text that indicates the link's destination.",
+        "read more": "Add specifics like 'Read more about [topic]' to provide context.",
+        "here": "Replace with text that describes the link's content.",
+        "link": "Specify what the link points to, e.g., 'Visit our [product] page'.",
+        "more": "Enhance with specifics like 'Learn more about [topic]'."
+    }
+    
+    solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
 
-    return issues, solutions, examples
+    return issues, solutions
 
 # ------------------------------ PageSpeed Insights Functions ------------------------------
 def get_pagespeed_insights(url):
