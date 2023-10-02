@@ -348,28 +348,30 @@ def crawlability_insights(url):
     canonical_link = soup.find("link", rel="canonical")
     if canonical_link and not safe_request_url(canonical_link['href']):
         issues.append(("CANON",
-                       "This page has a broken canonical link.",
+                       f"This page has a broken canonical link pointing to {canonical_link['href']}.",
                        "Ensure the canonical link points to a valid and accessible URL."))
 
     # JSCSS, JSCSSFILES, and JSCSSSIZE checks
     css_files = [link['href'] for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
     js_files = [script['src'] for script in soup.find_all('script', src=True) if script.get('src')]
     broken_js_css = [link for link in css_files if not safe_request_url(link)] + [script for script in js_files if not safe_request_url(script)]
-    
+
     if broken_js_css:
         issues.append(("JSCSS", 
-                       "Issues with broken internal JavaScript and CSS files on this page.", 
-                       "Ensure all linked JS and CSS files are accessible. Broken links: " + ", ".join(broken_js_css)))
+                       f"Issues with broken internal JavaScript and CSS files: {', '.join(broken_js_css)}",
+                       "Ensure all linked JS and CSS files are accessible."))
 
+    num_files = len(css_files + js_files)
     total_js_css_size = sum([len(safe_request_url(link).text) for link in css_files + js_files if safe_request_url(link)])
-    if len(css_files + js_files) > 10:  # Assuming more than 10 files is too many
+    
+    if num_files > 10:  # Assuming more than 10 files is too many
         issues.append(("JSCSSFILES", 
-                       "This page uses too many JavaScript and CSS files.", 
+                       f"This page uses {num_files} JavaScript and CSS files, which is considered excessive.", 
                        "Consider combining and minifying JS and CSS files to reduce the number of HTTP requests."))
 
     if total_js_css_size > 1 * 1024 * 1024:  # Assuming more than 1MB of JS/CSS is too much
         issues.append(("JSCSSSIZE", 
-                       "This page has a JavaScript and CSS total size that is too large.", 
+                       f"The total size of JavaScript and CSS on this page is {total_js_css_size / (1024 * 1024):.2f}MB, which is considered too large.", 
                        "Optimize and compress JS and CSS files to improve page load time."))
 
     # LINKCRAWL check
@@ -377,18 +379,15 @@ def crawlability_insights(url):
     non_crawlable_links = [link for link in internal_links if not safe_request_url(link)]
     if non_crawlable_links:
         issues.append(("LINKCRAWL",
-                       "Links on this page couldn't be crawled (incorrect URL formats).",
-                       "Ensure all internal links on the page point to valid and accessible URLs. Non-crawlable links: " + ", ".join(non_crawlable_links)))
+                       f"Links on this page couldn't be crawled (incorrect URL formats): {', '.join(non_crawlable_links)}",
+                       "Ensure all internal links on the page point to valid and accessible URLs."))
 
     # MINIFY check (simplified)
     unminified_files = [link for link in css_files + js_files if ".min." not in link]
     if unminified_files:
         issues.append(("MINIFY",
-                       "Issues with unminified JavaScript and CSS files on this page.",
-                       "Minify the JS and CSS files to improve page load time. Unminified files: " + ", ".join(unminified_files)))
-
-    # Rest of the checks like ROBOT and SITEMAP would require accessing and parsing specific files like robots.txt and sitemap.xml. 
-    # We've skipped them here for simplicity, but they can be added in a similar manner if required.
+                       f"Issues with unminified JavaScript and CSS files: {', '.join(unminified_files)}",
+                       "Minify the JS and CSS files to improve page load time."))
 
     return issues
 
