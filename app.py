@@ -257,6 +257,52 @@ def analyze_pagespeed_data(data):
 
     return crux_metrics, lighthouse_metrics
 
+def ImageAudit(url):
+    response = request_url(url)
+    if not response:
+        return "Error fetching URL", "Failed to retrieve content for image audit", "", ""
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    img_elements = soup.find_all('img')
+
+    missing_alt = []
+    broken_imgs = []
+    non_descriptive_names = []
+
+    base_domain = urlparse(url).netloc
+
+    for img in img_elements:
+        # Check for missing alt attributes
+        if not img.get('alt'):
+            missing_alt.append(img['src'])
+
+        # Check for internal broken images
+        img_src = urljoin(url, img['src'])
+        if base_domain in urlparse(img_src).netloc:
+            img_response = request_url(img_src)
+            if not img_response:
+                broken_imgs.append(img['src'])
+
+        # Check for non-descriptive image filenames
+        img_name = urlparse(img['src']).path.split('/')[-1]
+        if len(img_name.split('-')) <= 1:
+            non_descriptive_names.append(img['src'])
+
+    # Compile the results
+    optimization_alt = "Missing ALT Attributes" if missing_alt else "All images have ALT attributes"
+    details_alt = "Images on this page don't have alt attributes." if missing_alt else "All images on the page have alt attributes for better SEO and accessibility."
+
+    optimization_img = "Broken Images Found" if broken_imgs else "No broken images found"
+    details_img = "Internal images on this page are broken." if broken_imgs else "All internal images on the page are loading correctly."
+
+    optimization_title = "Non-Descriptive Image Filenames Found" if non_descriptive_names else "All image filenames are descriptive"
+    details_title = "Image file names are not descriptive." if non_descriptive_names else "All image filenames on the page are descriptive, enhancing SEO."
+
+    return optimization_alt, details_alt, optimization_img, details_img, optimization_title, details_title
+
+# The ImageAudit function is defined above. It provides detailed insights and recommendations based on the findings.
+
+
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
@@ -282,6 +328,18 @@ if url:
             st.write(f"**Optimization:** {optimization}")
             st.write(f"**Details:** {details}")
             st.write(f"**Recommendations:** {recommendations}")
+
+        with st.expander("🖼️ Image Audit"):
+            optimization_alt, details_alt, optimization_img, details_img, optimization_title, details_title = ImageAudit(url)
+            st.write("**ALT Attributes**")
+            st.write(f"**Optimization:** {optimization_alt}")
+            st.write(f"**Details:** {details_alt}")
+            st.write("**Broken Images**")
+            st.write(f"**Optimization:** {optimization_img}")
+            st.write(f"**Details:** {details_img}")
+            st.write("**Descriptive Image Filenames**")
+            st.write(f"**Optimization:** {optimization_title}")
+            st.write(f"**Details:** {details_title}")
 
         with st.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
