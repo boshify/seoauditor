@@ -80,38 +80,50 @@ def MD(url):
 def H1Audit(url):
     response = request_url(url)
     if not response:
-        return "Error fetching URL", "Failed to retrieve content for H1 audit"
+        return "Error fetching URL", "Failed to retrieve content for H1 audit", ""
 
     soup = BeautifulSoup(response.text, 'html.parser')
     h1_elements = soup.find_all('h1')
 
     if not h1_elements:
-        optimization = "H1"
-        details = """
-        - H1 headings are crucial for search engines to understand the main topic of a webpage.
-        - H1 headings provide a clear and concise summary of the content on a webpage.
-        - Including H1 headings improves the overall user experience by making the content more scannable and organized.
-        - H1 headings help search engines determine the relevance of a webpage to specific search queries.
-        - Having an H1 heading increases the chances of ranking higher in search engine results pages (SERPs).
-        - H1 headings contribute to the overall on-page optimization efforts, improving the website's visibility and organic traffic.
-        """
-        recommendations = """
-        - Add an H1 heading to the page.
-        - Ensure the H1 heading accurately reflects the main topic of the webpage.
-        - Make sure the H1 heading is clear and concise.
-        - Use relevant keywords in the H1 heading to improve search engine relevance.
-        - Optimize the H1 heading to increase the chances of ranking higher in SERPs.
-        - Consider the overall on-page optimization efforts when adding the H1 heading.
-        """
+        optimization = "H1 Missing"
+        details = ("This page doesn't have an H1 heading. H1 headings are crucial for search engines to "
+                   "understand the main topic of a webpage. They provide a clear and concise summary of the "
+                   "content and improve the overall user experience by making the content more scannable and organized. "
+                   "H1 headings also help search engines determine the relevance of a webpage to specific search queries, "
+                   "increasing the chances of ranking higher in search engine results pages (SERPs).")
+        recommendations = ("- Add an H1 heading to the page.\n"
+                           "- Ensure the H1 heading accurately reflects the main topic of the webpage.\n"
+                           "- Use relevant keywords in the H1 heading.\n"
+                           "- Optimize the H1 heading to increase the chances of ranking higher in SERPs.\n"
+                           "- Consider the overall on-page optimization efforts when adding the H1 heading.")
         return optimization, details, recommendations
-    else:
-        # If there are multiple H1s, let's use GPT-3 to get insights
-        h1_texts = [h1.get_text(strip=True) for h1 in h1_elements]
-        prompt = f"The page has multiple H1 headings: {', '.join(h1_texts)}. Provide insights and recommendations."
-        gpt_insights = get_gpt_insights(prompt)
-        return "Multiple H1s Found", gpt_insights, "Consider consolidating or restructuring H1 headings to best represent the content."
 
-# The H1Audit function is defined above. It checks for the presence and content of the H1 heading and provides insights and recommendations based on the findings.
+    elif len(h1_elements) > 1:
+        optimization = "Multiple H1s Found"
+        details = ("Having multiple H1 headings on a page is not considered best practice from an SEO perspective. "
+                   "H1 headings are used to indicate the main topic or focus of a page, and having multiple H1 headings "
+                   "can confuse search engines and users about the primary content of the page.")
+        h1_texts = [h1.get_text(strip=True) for h1 in h1_elements]
+        primary_h1_suggestion = get_gpt_insights(f"Which should be the primary H1 heading among: {', '.join(h1_texts)}?")
+        recommendations = (f"- Consolidate H1 headings: Choose one primary heading that best reflects the main topic "
+                           f"or focus of the page. In this case, \"{primary_h1_suggestion}\" seems to be the most suitable "
+                           "H1 heading. Remove any other H1 headings on the page.\n"
+                           "- Use subheadings: Use appropriate subheadings such as H2, H3, etc., to organize the information.\n"
+                           "- Optimize for keywords: Ensure the chosen H1 heading includes relevant keywords.\n"
+                           "- Review content structure: Ensure the content flows well and supports the main H1 topic.\n"
+                           "- Test and monitor: Monitor page performance and make adjustments based on data.")
+        return optimization, details, recommendations
+
+    else:
+        optimization = "Single H1 Found"
+        h1_text = h1_elements[0].get_text(strip=True)
+        alternative_h1_suggestion = get_gpt_insights(f"Suggest an alternative SEO-optimized H1 heading for: {h1_text}")
+        details = f"The page has an H1 heading: {h1_text}. It seems to be well-optimized."
+        recommendations = f"Alternative H1 Suggestion for better optimization: {alternative_h1_suggestion}"
+        return optimization, details, recommendations
+
+
 
 
 def LinkingAudit(url):
