@@ -191,6 +191,55 @@ def ImageAudit(url):
 
 
 
+def LinkingAudit(url):
+    try:
+        response = request_url(url)
+        if not response:
+            return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for element in soup.find_all(['header', 'nav', 'footer']):
+            element.extract()
+
+        main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
+
+        structured_issues = []
+        seen_links = set()
+
+        links = main_content.find_all('a', href=True)
+        base_domain = urlparse(url).netloc
+
+        for link in links:
+            href = link['href']
+            full_url = urljoin(url, href)
+
+            # If link is internal and not checked before
+            if base_domain in urlparse(full_url).netloc and full_url not in seen_links and not href.startswith('#'):
+                seen_links.add(full_url)
+                
+                # Check if the link resolves correctly
+                link_response = request_url(full_url)
+                if not link_response or link_response.status_code >= 400:
+                    structured_issues.append({
+                        "issue": f"Broken internal link found: {full_url}",
+                        "solution": f"Ensure the link is pointing to the correct location. Status Code: {link_response.status_code if link_response else 'Failed to fetch'}",
+                        "example": href
+                    })
+
+        if not structured_issues:
+            structured_issues.append({
+                "issue": "No internal linking issues found.",
+                "solution": "All internal links on the page seem to be working correctly."
+            })
+
+        return structured_issues
+    except Exception as e:
+        return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
+
+# The modified LinkingAudit function is defined above. It checks the status code of every internal link and reports those that don't resolve correctly.
+
+
+
 
 def AnchorTextAudit(url):
     try:
