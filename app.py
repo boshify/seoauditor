@@ -101,6 +101,12 @@ def AnchorTextAudit(url):
             return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
 
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Exclude common header and navigation areas
+        for header in soup.find_all(['header', 'nav']):
+            header.extract()
+
+        # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
         anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
@@ -126,9 +132,6 @@ def AnchorTextAudit(url):
         return issues, solutions
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
-
-
-
 
 
 
