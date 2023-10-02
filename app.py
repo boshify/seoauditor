@@ -564,3 +564,13 @@ if url:
         progress.progress(1.0)  # Mark as 100%
 
     status.text("Analysis Complete!")
+
+
+st.markdown("----")
+
+# Add the "Made by Jonathan Boshoff" at the bottom of the display with a link
+st.markdown("""
+<div style='position: fixed; bottom: 10px; right: 10px; font-size: 12px;'>
+    <a href="https://jonathanboshoff.com/one-page-seo-audit/" target="_blank">Made by Jonathan Boshoff</a>
+</div>
+""", unsafe_allow_html=True)
