@@ -53,7 +53,7 @@ def TT(url):
 def MD(url):
     response = request_url(url)
     if not response:
-        return None, "Error retrieving meta description from URL"
+        return "Error retrieving meta description", "Failed to fetch content from URL"
     
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
@@ -82,21 +82,29 @@ def LinkingAudit(url):
         response = request_url(url)
         if not response:
             return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
-
+        
         soup = BeautifulSoup(response.text, 'html.parser')
         for element in soup.find_all(['header', 'nav', 'footer']):
             element.extract()
+
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
+
         structured_issues = []
-        links = main_content.find_all('a', href=True)  # Select only links with href attribute
+        seen_links = set()
+
+        links = main_content.find_all('a', href=True)
         base_domain = urlparse(url).netloc
 
         for link in links:
             href = link['href']
-            if not href.startswith(('http://', 'https://')) and not href.startswith('#'):
-                full_url = urljoin(url, href)
-                if base_domain not in full_url:
-                    continue
+            full_url = urljoin(url, href)
+
+            if base_domain not in full_url or href.startswith('#') or full_url in seen_links:
+                continue
+            
+            seen_links.add(full_url)
+
+            if not href.startswith(('http://', 'https://')):
                 issue = f"Relative internal link found: {full_url}"
                 solution = "Consider making internal links absolute for clarity, although it's not strictly necessary."
                 structured_issues.append({
@@ -124,6 +132,7 @@ def AnchorTextAudit(url):
         soup = BeautifulSoup(response.text, 'html.parser')
         for element in soup.find_all(['header', 'nav', 'footer']):
             element.extract()
+
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
         anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
         generic_texts = ["click here", "read more", "here", "link", "more"]
@@ -150,7 +159,49 @@ def AnchorTextAudit(url):
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
 
-# Streamlit interface
+def get_pagespeed_insights(url):
+    API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    API_KEY = st.secrets["pagespeed_api_key"]
+    
+    params = {
+        "url": url,
+        "key": API_KEY
+    }
+    
+    response = requests.get(API_ENDPOINT, params=params, headers=HEADERS)
+    data = response.json()
+    
+    return data
+
+def analyze_pagespeed_data(data):
+    crux_metrics = {}
+    lighthouse_metrics = {}
+
+    if 'loadingExperience' in data and 'metrics' in data['loadingExperience']:
+        metrics = data['loadingExperience']['metrics']
+        if 'FIRST_CONTENTFUL_PAINT_MS' in metrics:
+            crux_metrics['First Contentful Paint'] = metrics['FIRST_CONTENTFUL_PAINT_MS']['category']
+        if 'FIRST_INPUT_DELAY_MS' in metrics:
+            crux_metrics['First Input Delay'] = metrics['FIRST_INPUT_DELAY_MS']['category']
+
+    if 'lighthouseResult' in data and 'audits' in data['lighthouseResult']:
+        audits = data['lighthouseResult']['audits']
+        
+        lighthouse_keys = {
+            'First Contentful Paint': 'first-contentful-paint',
+            'Speed Index': 'speed-index',
+            'Time To Interactive': 'interactive',
+            'First Meaningful Paint': 'first-meaningful-paint',
+            'First CPU Idle': 'first-cpu-idle',
+            'Estimated Input Latency': 'estimated-input-latency'
+        }
+        
+        for display_key, audit_key in lighthouse_keys.items():
+            if audit_key in audits and 'displayValue' in audits[audit_key]:
+                lighthouse_metrics[display_key] = audits[audit_key]['displayValue']
+
+    return crux_metrics, lighthouse_metrics
+
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
@@ -190,3 +241,15 @@ if url:
                     st.write("---")
             else:
                 st.write("No anchor text issues found.")
+
+        with st.expander("⚡ PageSpeed Insights"):
+            pagespeed_data = get_pagespeed_insights(url)
+            crux_metrics, lighthouse_metrics = analyze_pagespeed_data(pagespeed_data)
+            
+            st.write("## Chrome User Experience Report Results")
+            for key, value in crux_metrics.items():
+                st.write(f"**{key}:** {value}")
+            
+            st.write("## Lighthouse Results")
+            for key, value in lighthouse_metrics.items():
+                st.write(f"**{key}:** {value}")
