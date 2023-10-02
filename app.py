@@ -77,11 +77,16 @@ def LinkingAudit(url):
 
         structured_issues = []
 
+        # Extract base URL
+        base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
+        
         links = [link for link in main_content.find_all('a', href=True) if not link['href'].startswith('#')]
         for link in links:
             href = link['href']
-            if not href.startswith(('http://', 'https://', 'www.')):
-                issue = f"Internal link found: {href}"
+            absolute_url = urljoin(base_url, href)
+            
+            if not href.startswith(('http://', 'https://')) and base_url not in absolute_url:
+                issue = f"Internal link found: {absolute_url}"
                 solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
                 
                 structured_issues.append({
