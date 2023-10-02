@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import openai
 from urllib.parse import urljoin
+from lxml import etree
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
@@ -91,16 +92,21 @@ def LinkingAudit(url):
     links = main_content.find_all('a', href=True)  # Select only links with href attribute
     for link in links:
         href = link['href']
-        status_code = validate_link(url, href)
-        if status_code:
-            issue = f"Broken link detected with status {status_code}: {href}"
-            solution = "Ensure the link points to a valid and accessible URL."
+        if not href.startswith(('http://', 'https://', 'www.')):
+            issue = f"Internal link found: {href}"
+            solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
             
             structured_issues.append({
                 "issue": issue,
                 "solution": solution,
                 "example": href
             })
+
+    if not structured_issues:
+        structured_issues.append({
+            "issue": "No internal links found.",
+            "solution": "Consider adding relevant internal links to improve user navigation and SEO."
+        })
 
     return structured_issues
 
