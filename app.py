@@ -183,7 +183,6 @@ def analyze_pagespeed_data(data):
 
     return crux_metrics, lighthouse_metrics
 
-
 # ------------------------------ Streamlit UI Rendering ------------------------------
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
@@ -217,9 +216,9 @@ if url:
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
-            issues, solutions, examples = AnchorTextAudit(url)
+            issues, solutions = AnchorTextAudit(url)
             if issues:
-                for issue, solution, example in zip(issues, solutions, examples):
+                for issue, solution in zip(issues, solutions):
                     st.write("**Issue:**", issue)
                     st.write("**Solution:**", solution)
                     st.write("---")  # Adds a horizontal line for separation
