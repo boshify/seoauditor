@@ -21,6 +21,18 @@ def request_url(url):
         st.error(f"Error fetching URL: {e}")
         return None
 
+def safe_request_url(target_url, method='GET'):
+    try:
+        if method.upper() == 'HEAD':
+            response = requests.head(target_url, headers=HEADERS, allow_redirects=True)
+        else:
+            response = requests.get(target_url, headers=HEADERS)
+        response.raise_for_status()
+        return response
+    except requests.RequestException as e:
+        st.warning(f"Error fetching URL: {e}")
+        return None
+
 def get_gpt_insights(prompt):
     messages = [
         {"role": "system", "content": "You are an SEO expert."},
@@ -38,10 +50,12 @@ def TT(url):
         return "Failed to fetch title", "Error retrieving title from URL"
     
     soup = BeautifulSoup(response.text, 'html.parser')
-    title = soup.title.string if soup.title else "No Title Found"
+    title = soup.title.string if soup.title else None
     insights = ""
     
-    if len(title) < 50:
+    if title is None:
+        return "No Title Found", "No title tag detected for the page."
+    elif len(title) < 50:
         insights += "The title tag is shorter than the recommended 50-60 characters. Consider adding more descriptive keywords or phrases to improve its clarity."
     elif len(title) > 60:
         insights += "The title tag is longer than the recommended 50-60 characters. Consider shortening it while retaining its main message."
@@ -49,6 +63,7 @@ def TT(url):
         insights += "The title tag is within the recommended length and seems well-optimized. Ensure it's relevant and unique to the content of the page."
     
     return title, insights
+
 
 def MD(url):
     response = request_url(url)
