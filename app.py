@@ -324,18 +324,29 @@ def analyze_pagespeed_data(data):
     return crux_metrics, lighthouse_metrics
 
 def crawlability_insights(url):
-    response = request_url(url)
-    if not response:
-        return [("CRAWL", "Page could not be crawled.", "Ensure the page is accessible and not blocked by server settings.")]
-
-    soup = BeautifulSoup(response.text, 'html.parser')
     issues = []
 
-    # ... previous checks ...
+    # Enhanced request function with error handling
+    def safe_request_url(target_url):
+        try:
+            # Append the base URL if no scheme is provided
+            if not urlparse(target_url).scheme:
+                target_url = urljoin(url, target_url)
+            response = request_url(target_url)
+            return response
+        except requests.RequestException as e:
+            issues.append(("Error", f"Error fetching URL: {e}", "Ensure the URL is accessible and valid."))
+            return None
+
+    response = safe_request_url(url)
+    if not response:
+        return issues  # Return early if the main page can't be crawled
+
+    soup = BeautifulSoup(response.text, 'html.parser')
 
     # CANON check (broken canonical link)
     canonical_link = soup.find("link", rel="canonical")
-    if canonical_link and not request_url(canonical_link['href']):
+    if canonical_link and not safe_request_url(canonical_link['href']):
         issues.append(("CANON",
                        "This page has a broken canonical link.",
                        "Ensure the canonical link points to a valid and accessible URL."))
@@ -343,14 +354,14 @@ def crawlability_insights(url):
     # JSCSS, JSCSSFILES, and JSCSSSIZE checks
     css_files = [link['href'] for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
     js_files = [script['src'] for script in soup.find_all('script', src=True) if script.get('src')]
-    broken_js_css = [link for link in css_files if not request_url(link)] + [script for script in js_files if not request_url(script)]
-    total_js_css_size = sum([len(request_url(link).text) for link in css_files + js_files if request_url(link)])
-
+    broken_js_css = [link for link in css_files if not safe_request_url(link)] + [script for script in js_files if not safe_request_url(script)]
+    
     if broken_js_css:
         issues.append(("JSCSS", 
                        "Issues with broken internal JavaScript and CSS files on this page.", 
                        "Ensure all linked JS and CSS files are accessible. Broken links: " + ", ".join(broken_js_css)))
-    
+
+    total_js_css_size = sum([len(safe_request_url(link).text) for link in css_files + js_files if safe_request_url(link)])
     if len(css_files + js_files) > 10:  # Assuming more than 10 files is too many
         issues.append(("JSCSSFILES", 
                        "This page uses too many JavaScript and CSS files.", 
@@ -363,7 +374,7 @@ def crawlability_insights(url):
 
     # LINKCRAWL check
     internal_links = [a['href'] for a in soup.find_all('a', href=True) if urlparse(url).netloc in urlparse(a['href']).netloc]
-    non_crawlable_links = [link for link in internal_links if not request_url(link)]
+    non_crawlable_links = [link for link in internal_links if not safe_request_url(link)]
     if non_crawlable_links:
         issues.append(("LINKCRAWL",
                        "Links on this page couldn't be crawled (incorrect URL formats).",
@@ -376,11 +387,8 @@ def crawlability_insights(url):
                        "Issues with unminified JavaScript and CSS files on this page.",
                        "Minify the JS and CSS files to improve page load time. Unminified files: " + ", ".join(unminified_files)))
 
-    # ROBOT check is a bit involved as it requires fetching and parsing robots.txt
-    # For simplicity, we're skipping it here, but it would involve checking if the page's path is in the Disallow section of robots.txt
-
-    # SITEMAP check is also involved and would require fetching and parsing the sitemap.xml
-    # It's also skipped here for simplicity.
+    # Rest of the checks like ROBOT and SITEMAP would require accessing and parsing specific files like robots.txt and sitemap.xml. 
+    # We've skipped them here for simplicity, but they can be added in a similar manner if required.
 
     return issues
 
