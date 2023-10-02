@@ -123,9 +123,13 @@ def AnchorTextAudit(url):
         "more": "Enhance with specifics like 'Learn more about [topic]'."
     }
     
-    solutions = [(text, generic_solutions.get(text.lower(), "Replace with more descriptive text.")) for text in issues]
+    if not issues:
+        return [], []
 
-    return solutions
+    solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
+
+    return issues, solutions
+
 
 def get_pagespeed_insights(url):
     API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
