@@ -138,6 +138,7 @@ def AnchorTextAudit(url):
 
 
 
+
 def get_pagespeed_insights(url):
     API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
     API_KEY = st.secrets["pagespeed_api_key"]
