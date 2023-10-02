@@ -366,16 +366,46 @@ if url:
             st.write(f"**Recommendations:** {recommendations}")
 
         with st.expander("🖼️ Image Audit"):
-            optimization_alt, details_alt, optimization_img, details_img, optimization_title, details_title = ImageAudit(url)
+            image_audit_results = ImageAudit(url)
+
+            # ALT Attributes section
             st.write("**ALT Attributes**")
-            st.write(f"**Optimization:** {optimization_alt}")
-            st.write(f"**Details:** {details_alt}")
+            if image_audit_results["missing_alt"][0]:
+                st.write(f"**Images without ALT attributes:**")
+                for img_src in image_audit_results["missing_alt"][0]:
+                    st.write(f"- {img_src}")
+                st.write(image_audit_results["missing_alt"][1])
+                st.write("**Recommended ALT Texts:**")
+                for img_src, alt_suggestion in image_audit_results["missing_alt"][2]:
+                    st.write(f"- {img_src}: {alt_suggestion}")
+
+            # Existing ALT attributes
+            st.write("**Existing ALT Attributes Analysis**")
+            for img_src, alt_text in image_audit_results["existing_alt"][0]:
+                st.write(f"Image: {img_src} | Current ALT: {alt_text}")
+            st.write(image_audit_results["existing_alt"][1])
+            st.write("**Improved ALT Texts:**")
+            for img_src, improved_alt in image_audit_results["existing_alt"][2]:
+                st.write(f"- {img_src}: {improved_alt}")
+
+            # Broken Images section
             st.write("**Broken Images**")
-            st.write(f"**Optimization:** {optimization_img}")
-            st.write(f"**Details:** {details_img}")
+            if image_audit_results["broken_imgs"][0]:
+                st.write(f"**Broken Images:**")
+                for img_src in image_audit_results["broken_imgs"][0]:
+                    st.write(f"- {img_src}")
+                st.write(image_audit_results["broken_imgs"][1])
+
+            # Descriptive Image Filenames
             st.write("**Descriptive Image Filenames**")
-            st.write(f"**Optimization:** {optimization_title}")
-            st.write(f"**Details:** {details_title}")
+            if image_audit_results["non_descriptive_names"][0]:
+                st.write(f"**Images with non-descriptive filenames:**")
+                for img_src in image_audit_results["non_descriptive_names"][0]:
+                    st.write(f"- {img_src}")
+                st.write(image_audit_results["non_descriptive_names"][1])
+                st.write("**Improved Filenames:**")
+                for img_src, improved_name in image_audit_results["non_descriptive_names"][2]:
+                    st.write(f"- {img_src}: {improved_name}")
 
         with st.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
@@ -400,11 +430,11 @@ if url:
         with st.expander("⚡ PageSpeed Insights"):
             pagespeed_data = get_pagespeed_insights(url)
             crux_metrics, lighthouse_metrics = analyze_pagespeed_data(pagespeed_data)
-            
+
             st.write("## Chrome User Experience Report Results")
             for key, value in crux_metrics.items():
                 st.write(f"**{key}:** {value}")
-            
+
             st.write("## Lighthouse Results")
             for key, value in lighthouse_metrics.items():
                 st.write(f"**{key}:** {value}")
