@@ -492,7 +492,15 @@ if url:
         status.text("Auditing Images...")
         with col1.expander("🖼️ Image Audit"):
             image_audit_results = ImageAudit(url)
-            # Process the image_audit_results here...
+            for key, value in image_audit_results.items():
+                st.write(f"**{value[1]}**")
+                if isinstance(value[2], list):
+                    for img, suggestion in value[2]:
+                        st.write(f"Image: {img}")
+                        st.write(f"Suggestion: {suggestion}")
+                else:
+                    st.write(value[2])
+                st.write("---")
         progress.progress(4 * progress_step)
 
         status.text("Analyzing Linking...")
@@ -556,5 +564,3 @@ if url:
         progress.progress(1.0)  # Mark as 100%
 
     status.text("Analysis Complete!")
-
-
