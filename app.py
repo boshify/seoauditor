@@ -88,9 +88,9 @@ def LinkingAudit(url):
 
     structured_issues = []
 
-    links = main_content.find_all('a')
+    links = main_content.find_all('a', href=True)  # Select only links with href attribute
     for link in links:
-        href = link.get('href')
+        href = link['href']
         status_code = validate_link(url, href)
         if status_code:
             issue = f"Broken link detected with status {status_code}: {href}"
@@ -112,7 +112,7 @@ def AnchorTextAudit(url):
     if not main_content:
         main_content = soup.find('article') or soup.find('section') or soup
 
-    anchor_texts = [a.string for a in main_content.find_all('a') if a.string]
+    anchor_texts = [a.get_text(strip=True) for a in main_content.find_all('a') if a.get_text(strip=True)]
     generic_texts = ["click here", "read more", "here", "link", "more"]
 
     issues = [text for text in anchor_texts if text.lower() in generic_texts]
