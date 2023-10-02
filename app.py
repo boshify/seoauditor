@@ -126,52 +126,69 @@ def H1Audit(url):
 
 
 
-def LinkingAudit(url):
-    try:
-        response = request_url(url)
-        if not response:
-            return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
-        
-        soup = BeautifulSoup(response.text, 'html.parser')
-        for element in soup.find_all(['header', 'nav', 'footer']):
-            element.extract()
+def ImageAudit(url):
+    response = request_url(url)
+    if not response:
+        return {"error": "Failed to retrieve content for image audit"}
 
-        main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
+    soup = BeautifulSoup(response.text, 'html.parser')
+    img_elements = soup.find_all('img')
 
-        structured_issues = []
-        seen_links = set()
+    missing_alt = []
+    existing_alt = []
+    broken_imgs = []
+    non_descriptive_names = []
 
-        links = main_content.find_all('a', href=True)
-        base_domain = urlparse(url).netloc
+    base_domain = urlparse(url).netloc
 
-        for link in links:
-            href = link['href']
-            full_url = urljoin(url, href)
+    for img in img_elements:
+        # Check for missing alt attributes
+        if not img.get('alt'):
+            missing_alt.append(urljoin(url, img['src']))
+        else:
+            existing_alt.append((urljoin(url, img['src']), img['alt']))
 
-            # If link is internal and not checked before
-            if base_domain in urlparse(full_url).netloc and full_url not in seen_links and not href.startswith('#'):
-                seen_links.add(full_url)
-                
-                # Check if the link resolves correctly
-                link_response = request_url(full_url)
-                if not link_response or link_response.status_code >= 400:
-                    structured_issues.append({
-                        "issue": f"Broken internal link found: {full_url}",
-                        "solution": f"Ensure the link is pointing to the correct location. Status Code: {link_response.status_code if link_response else 'Failed to fetch'}",
-                        "example": href
-                    })
+        # Check for internal broken images
+        img_src = urljoin(url, img['src'])
+        if base_domain in urlparse(img_src).netloc:
+            img_response = request_url(img_src)
+            if not img_response:
+                broken_imgs.append(img_src)
 
-        if not structured_issues:
-            structured_issues.append({
-                "issue": "No internal linking issues found.",
-                "solution": "All internal links on the page seem to be working correctly."
-            })
+        # Non-descriptive filenames will be processed later (after the loop)
+        img_name = urlparse(img['src']).path.split('/')[-1]
+        if len(img_name.split('-')) <= 1:
+            non_descriptive_names.append(img_src)
 
-        return structured_issues
-    except Exception as e:
-        return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
+    # Recommendations for missing alt attributes
+    alt_recommendations = []
+    for img_src in missing_alt:
+        img_name = urlparse(img_src).path.split('/')[-1]
+        alt_suggestion = get_gpt_insights(f"Suggest an alt text for the image with filename: {img_name}")
+        alt_recommendations.append((img_src, alt_suggestion))
 
-# The modified LinkingAudit function is defined above. It checks the status code of every internal link and reports those that don't resolve correctly.
+    # Improved alt text for existing alt attributes
+    improved_alt_texts = []
+    for img_src, alt_text in existing_alt:
+        improved_alt_suggestion = get_gpt_insights(f"Suggest a better alt text for the image with current alt text: {alt_text}")
+        improved_alt_texts.append((img_src, improved_alt_suggestion))
+
+    # Improved filenames for non-descriptive names
+    improved_filenames = []
+    for img_src in non_descriptive_names:
+        img_name = urlparse(img_src).path.split('/')[-1]
+        filename_suggestion = get_gpt_insights(f"Suggest a more descriptive filename for the image with current name: {img_name}")
+        improved_filenames.append((img_src, filename_suggestion))
+
+    return {
+        "missing_alt": (missing_alt, "Images should have alt attributes for accessibility and SEO.", alt_recommendations),
+        "existing_alt": (existing_alt, "Checking the descriptiveness of existing alt texts.", improved_alt_texts),
+        "broken_imgs": (broken_imgs, "Broken images can lead to poor user experience.", "Consider re-uploading or fixing the source of the broken images."),
+        "non_descriptive_names": (non_descriptive_names, "Descriptive image filenames can help with image SEO.", improved_filenames)
+    }
+
+# The updated ImageAudit function is defined above, reverting the name change.
+
 
 
 
