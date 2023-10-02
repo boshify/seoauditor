@@ -42,10 +42,7 @@ def TT(url):
     return title, insights
 
 def MD(url):
-    response = request_url(url)
-    if not response:
-        return None, "Error retrieving meta description from URL"
-    
+    response = requests.get(url, headers=HEADERS)
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
     insights = ""
@@ -54,17 +51,19 @@ def MD(url):
         desc = meta_description['content']
         
         if len(desc) < 150:
-            insights += "The meta description is shorter than the recommended 150-160 characters. Consider expanding it to provide a more comprehensive summary of the page."
+            insights += "The meta description is shorter than the recommended 150-160 characters. "
+            insights += "Consider expanding it to provide a more comprehensive summary of the page. "
         elif len(desc) > 160:
-            insights += "The meta description is longer than the recommended 150-160 characters. Consider shortening it to make it concise."
+            insights += "The meta description is longer than the recommended 150-160 characters. "
+            insights += "Consider shortening it to make it concise. "
         
         ctas = ['learn more', 'discover', 'find out', 'get started', 'read on']
         if not any(cta in desc.lower() for cta in ctas):
-            insights += "Consider adding a call to action in the meta description to entice users."
+            insights += "Consider adding a call to action in the meta description to entice users. "
         
         return desc, insights
     else:
-        return None, "Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
+        return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
 def LinkingAudit(url):
     try:
@@ -86,24 +85,18 @@ def LinkingAudit(url):
             absolute_url = urljoin(base_url, href)
             
             if href.startswith('/') and base_url in absolute_url:
-                issue = f"Relative internal link found: {absolute_url}"
-                solution = "Consider making internal links absolute for clarity, although it's not strictly necessary."
-                
                 structured_issues.append({
-                    "issue": issue,
-                    "solution": solution,
-                    "example": href
+                    "issue": f"Relative internal link found: {absolute_url}",
+                    "solution": ""
                 })
 
         if not structured_issues:
-            structured_issues.append({
-                "issue": "No relative internal links found.",
-                "solution": "All internal links seem to be absolute, which is good for clarity."
-            })
+            return []
 
         return structured_issues
     except Exception as e:
         return [{"issue": "Unexpected error during link audit", "solution": str(e)}]
+
 
 
 def AnchorTextAudit(url):
