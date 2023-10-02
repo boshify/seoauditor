@@ -115,19 +115,26 @@ def AnchorTextAudit(url):
             "link": "Specify what the link points to, e.g., 'Visit our [product] page'.",
             "more": "Enhance with specifics like 'Learn more about [topic]'."
         }
-        
-        if not anchor_texts:
-            return ["No Links Found"], ["I couldn't find any internal links on this page. Maybe add some?"]
-
-        
-        if not issues:
-            return [], []
 
         solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
-
+        
+        # If no anchor texts:
+        if not anchor_texts:
+            return ["No Links Found"], ["I couldn't find any internal links on this page. Maybe add some?"]
+        
+        # Provide generic recommendations if no specific issues are found
+        if not issues:
+            generic_recommendations = [
+                ("Use Descriptive Anchor Text", "Ensure that the clickable text provides context about the content it links to."),
+                ("Avoid Over Optimization", "Ensure that you're not using the same exact match keyword in many internal links; it can appear spammy to search engines."),
+                ("Avoid Under Optimization", "If your anchor texts are too generic or vague, consider making them more specific to the linked content.")
+            ]
+            issues, solutions = zip(*generic_recommendations)
+            
         return issues, solutions
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
+
 
 
 
