@@ -103,37 +103,30 @@ def AnchorTextAudit(url):
         soup = BeautifulSoup(response.text, 'html.parser')
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
-        anchor_texts = [a.get_text(strip=True) for a in main_content.find_all('a') if a.get_text(strip=True)]
+        anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
         generic_texts = ["click here", "read more", "here", "link", "more"]
 
-        issues = [text for text in anchor_texts if text.lower() in generic_texts]
-        
-        generic_solutions = {
-            "click here": "Replace with descriptive text that indicates the link's destination.",
-            "read more": "Add specifics like 'Read more about [topic]' to provide context.",
-            "here": "Replace with text that describes the link's content.",
-            "link": "Specify what the link points to, e.g., 'Visit our [product] page'.",
-            "more": "Enhance with specifics like 'Learn more about [topic]'."
-        }
+        issues = []
+        solutions = []
 
-        solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
-        
-        # If no anchor texts:
-        if not anchor_texts:
-            return ["No Links Found"], ["I couldn't find any internal links on this page. Maybe add some?"]
-        
-        # Provide generic recommendations if no specific issues are found
+        for text, href in anchor_texts:
+            if text.lower() in generic_texts:
+                issues.append(f"Link: {href} | Anchor Text: '{text}'")
+                solutions.append("Replace with more descriptive text that provides context about the content it links to.")
+
+        # If there are fewer than 3 issues, add generic recommendations
+        while len(issues) < 3 and anchor_texts:
+            text, href = anchor_texts.pop(0)
+            issues.append(f"Link: {href} | Anchor Text: '{text}'")
+            solutions.append("Consider revising to be more specific or to avoid potential over-optimization.")
+
         if not issues:
-            generic_recommendations = [
-                ("Use Descriptive Anchor Text", "Ensure that the clickable text provides context about the content it links to."),
-                ("Avoid Over Optimization", "Ensure that you're not using the same exact match keyword in many internal links; it can appear spammy to search engines."),
-                ("Avoid Under Optimization", "If your anchor texts are too generic or vague, consider making them more specific to the linked content.")
-            ]
-            issues, solutions = zip(*generic_recommendations)
-            
+            return ["No Issues Found"], ["All anchor texts on the page seem well-optimized."]
+
         return issues, solutions
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
+
 
 
 
