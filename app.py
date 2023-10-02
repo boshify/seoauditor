@@ -85,7 +85,7 @@ def LinkingAudit(url):
             href = link['href']
             absolute_url = urljoin(base_url, href)
             
-            if not href.startswith(('http://', 'https://')) and base_url not in absolute_url:
+            if base_url in absolute_url and not href.startswith(('http://', 'https://')):
                 issue = f"Internal link found: {absolute_url}"
                 solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
                 
@@ -104,6 +104,7 @@ def LinkingAudit(url):
         return structured_issues
     except Exception as e:
         return [{"issue": "Unexpected error during link audit", "solution": str(e)}]
+
 
 def AnchorTextAudit(url):
     try:
