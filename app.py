@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import requests
 import openai
 from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
