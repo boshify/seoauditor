@@ -2,8 +2,7 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import openai
-from urllib.parse import urljoin
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
@@ -13,7 +12,6 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
 }
 
-# Error handler for requests
 def request_url(url):
     try:
         response = requests.get(url, headers=HEADERS)
@@ -22,6 +20,17 @@ def request_url(url):
     except requests.RequestException as e:
         st.error(f"Error fetching URL: {e}")
         return None
+
+def get_gpt_insights(prompt):
+    messages = [
+        {"role": "system", "content": "You are an SEO expert."},
+        {"role": "user", "content": prompt}
+    ]
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=messages
+    )
+    return response.choices[0].message['content'].strip()
 
 def TT(url):
     response = request_url(url)
@@ -42,7 +51,10 @@ def TT(url):
     return title, insights
 
 def MD(url):
-    response = requests.get(url, headers=HEADERS)
+    response = request_url(url)
+    if not response:
+        return None, "Error retrieving meta description from URL"
+    
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
     insights = ""
@@ -72,18 +84,12 @@ def LinkingAudit(url):
             return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
 
         soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Exclude common header, navigation, and footer areas
         for element in soup.find_all(['header', 'nav', 'footer']):
             element.extract()
-
-        # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
-
         structured_issues = []
-
         links = main_content.find_all('a', href=True)  # Select only links with href attribute
-        base_domain = urllib.parse.urlparse(url).netloc
+        base_domain = urlparse(url).netloc
 
         for link in links:
             href = link['href']
@@ -109,10 +115,6 @@ def LinkingAudit(url):
     except Exception as e:
         return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
 
-
-
-
-
 def AnchorTextAudit(url):
     try:
         response = request_url(url)
@@ -120,14 +122,9 @@ def AnchorTextAudit(url):
             return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
 
         soup = BeautifulSoup(response.text, 'html.parser')
-
-        # Exclude common header, navigation, and footer areas
         for element in soup.find_all(['header', 'nav', 'footer']):
             element.extract()
-
-        # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
-
         anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
         generic_texts = ["click here", "read more", "here", "link", "more"]
 
@@ -140,7 +137,6 @@ def AnchorTextAudit(url):
                 gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
                 solutions.append(gpt_suggestion)
 
-        # If there are fewer than 3 issues, use GPT to suggest improvements
         while len(issues) < 3 and anchor_texts:
             text, href = anchor_texts.pop(0)
             issues.append(f"Link: {href} | Anchor Text: '{text}'")
@@ -154,52 +150,7 @@ def AnchorTextAudit(url):
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
 
-
-
-
-def get_pagespeed_insights(url):
-    API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
-    API_KEY = st.secrets["pagespeed_api_key"]
-    
-    params = {
-        "url": url,
-        "key": API_KEY
-    }
-    
-    response = requests.get(API_ENDPOINT, params=params, headers=HEADERS)
-    data = response.json()
-    
-    return data
-
-def analyze_pagespeed_data(data):
-    crux_metrics = {}
-    lighthouse_metrics = {}
-
-    if 'loadingExperience' in data and 'metrics' in data['loadingExperience']:
-        metrics = data['loadingExperience']['metrics']
-        if 'FIRST_CONTENTFUL_PAINT_MS' in metrics:
-            crux_metrics['First Contentful Paint'] = metrics['FIRST_CONTENTFUL_PAINT_MS']['category']
-        if 'FIRST_INPUT_DELAY_MS' in metrics:
-            crux_metrics['First Input Delay'] = metrics['FIRST_INPUT_DELAY_MS']['category']
-
-    if 'lighthouseResult' in data and 'audits' in data['lighthouseResult']:
-        audits = data['lighthouseResult']['audits']
-        
-        lighthouse_keys = {
-            'First Contentful Paint': 'first-contentful-paint',
-            'Speed Index': 'speed-index',
-            'Time To Interactive': 'interactive',
-            'First Meaningful Paint': 'first-meaningful-paint',
-            'First CPU Idle': 'first-cpu-idle',
-            'Estimated Input Latency': 'estimated-input-latency'
-        }
-        
-        for display_key, audit_key in lighthouse_keys.items():
-            if audit_key in audits and 'displayValue' in audits[audit_key]:
-                lighthouse_metrics[display_key] = audits[audit_key]['displayValue']
-
-    return crux_metrics, lighthouse_metrics
-
+# Streamlit interface
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
@@ -239,15 +190,3 @@ if url:
                     st.write("---")
             else:
                 st.write("No anchor text issues found.")
-
-        with st.expander("⚡ PageSpeed Insights"):
-            pagespeed_data = get_pagespeed_insights(url)
-            crux_metrics, lighthouse_metrics = analyze_pagespeed_data(pagespeed_data)
-            
-            st.write("## Chrome User Experience Report Results")
-            for key, value in crux_metrics.items():
-                st.write(f"**{key}:** {value}")
-            
-            st.write("## Lighthouse Results")
-            for key, value in lighthouse_metrics.items():
-                st.write(f"**{key}:** {value}")
