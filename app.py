@@ -77,6 +77,43 @@ def MD(url):
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
+def H1Audit(url):
+    response = request_url(url)
+    if not response:
+        return "Error fetching URL", "Failed to retrieve content for H1 audit"
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    h1_elements = soup.find_all('h1')
+
+    if not h1_elements:
+        optimization = "H1"
+        details = """
+        - H1 headings are crucial for search engines to understand the main topic of a webpage.
+        - H1 headings provide a clear and concise summary of the content on a webpage.
+        - Including H1 headings improves the overall user experience by making the content more scannable and organized.
+        - H1 headings help search engines determine the relevance of a webpage to specific search queries.
+        - Having an H1 heading increases the chances of ranking higher in search engine results pages (SERPs).
+        - H1 headings contribute to the overall on-page optimization efforts, improving the website's visibility and organic traffic.
+        """
+        recommendations = """
+        - Add an H1 heading to the page.
+        - Ensure the H1 heading accurately reflects the main topic of the webpage.
+        - Make sure the H1 heading is clear and concise.
+        - Use relevant keywords in the H1 heading to improve search engine relevance.
+        - Optimize the H1 heading to increase the chances of ranking higher in SERPs.
+        - Consider the overall on-page optimization efforts when adding the H1 heading.
+        """
+        return optimization, details, recommendations
+    else:
+        # If there are multiple H1s, let's use GPT-3 to get insights
+        h1_texts = [h1.get_text(strip=True) for h1 in h1_elements]
+        prompt = f"The page has multiple H1 headings: {', '.join(h1_texts)}. Provide insights and recommendations."
+        gpt_insights = get_gpt_insights(prompt)
+        return "Multiple H1s Found", gpt_insights, "Consider consolidating or restructuring H1 headings to best represent the content."
+
+# The H1Audit function is defined above. It checks for the presence and content of the H1 heading and provides insights and recommendations based on the findings.
+
+
 def LinkingAudit(url):
     try:
         response = request_url(url)
@@ -227,6 +264,12 @@ if url:
                     st.write(f"**Recommendations:** {meta_desc_insights}")
             else:
                 st.write(meta_desc_insights)
+
+         with st.expander("🔖 H1 Heading Audit"):
+            optimization, details, recommendations = H1Audit(url)
+            st.write(f"**Optimization:** {optimization}")
+            st.write(f"**Details:** {details}")
+            st.write(f"**Recommendations:** {recommendations}")
 
         with st.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
