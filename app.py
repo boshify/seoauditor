@@ -122,7 +122,8 @@ def AnchorTextAudit(url):
         }
         
         if not anchor_texts:
-            return [("No Links Found", "I couldn't find any internal links on this page. Maybe add some?")]
+            return ["No Links Found"], ["I couldn't find any internal links on this page. Maybe add some?"]
+
         
         if not issues:
             return [], []
