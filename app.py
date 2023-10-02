@@ -82,11 +82,14 @@ def LinkingAudit(url):
         response = request_url(url)
         if not response:
             return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
-        
+
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Exclude common header, navigation, and footer areas
         for element in soup.find_all(['header', 'nav', 'footer']):
             element.extract()
 
+        # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
         structured_issues = []
@@ -99,10 +102,18 @@ def LinkingAudit(url):
             href = link['href']
             full_url = urljoin(url, href)
 
-            if base_domain not in full_url or href.startswith('#') or full_url in seen_links:
-                continue
-            
-            seen_links.add(full_url)
+            # Check if link is internal
+            if base_domain in urlparse(full_url).netloc and full_url not in seen_links and not href.startswith('#'):
+                seen_links.add(full_url)
+                # Now, instead of raising an issue immediately, we'll check if it's a relative or absolute link
+                if not href.startswith(('http://', 'https://')):
+                    issue = f"Relative internal link found: {full_url}"
+                    solution = "Consider making internal links absolute for clarity, although it's not strictly necessary."
+                    structured_issues.append({
+                        "issue": issue,
+                        "solution": solution,
+                        "example": href
+                    })
 
         if not structured_issues:
             structured_issues.append({
@@ -113,6 +124,7 @@ def LinkingAudit(url):
         return structured_issues
     except Exception as e:
         return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
+
 
 def LinkingAudit(url):
     try:
