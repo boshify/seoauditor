@@ -102,9 +102,9 @@ def AnchorTextAudit(url):
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Exclude common header and navigation areas
-        for header in soup.find_all(['header', 'nav']):
-            header.extract()
+        # Exclude common header, navigation, and footer areas
+        for element in soup.find_all(['header', 'nav', 'footer']):
+            element.extract()
 
         # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
@@ -118,13 +118,15 @@ def AnchorTextAudit(url):
         for text, href in anchor_texts:
             if text.lower() in generic_texts:
                 issues.append(f"Link: {href} | Anchor Text: '{text}'")
-                solutions.append("Replace with more descriptive text that provides context about the content it links to.")
+                gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
+                solutions.append(gpt_suggestion)
 
-        # If there are fewer than 3 issues, add generic recommendations
+        # If there are fewer than 3 issues, use GPT to suggest improvements
         while len(issues) < 3 and anchor_texts:
             text, href = anchor_texts.pop(0)
             issues.append(f"Link: {href} | Anchor Text: '{text}'")
-            solutions.append("Consider revising to be more specific or to avoid potential over-optimization.")
+            gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
+            solutions.append(gpt_suggestion)
 
         if not issues:
             return ["No Issues Found"], ["All anchor texts on the page seem well-optimized."]
@@ -132,6 +134,7 @@ def AnchorTextAudit(url):
         return issues, solutions
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
+
 
 
 
