@@ -455,16 +455,22 @@ st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
+    progress = st.progress(0)
+    progress_step = 1.0 / 9  # Based on the number of audits
+    status = st.empty()  # Placeholder for status messages
+
     with st.spinner("Analyzing..."):
-        
         col1, col2 = st.columns(2)  # Creating two columns
 
+        status.text("Analyzing Title Tag...")
         with col1.expander("🏷️ Title Tag Audit"):
             title, title_insights = TT(url)
             st.write(f"**Title Tag Content:** {title}")
             if title_insights:
                 st.write(f"**Recommendations:** {title_insights}")
+        progress.progress(progress_step)
 
+        status.text("Analyzing Meta Description...")
         with col1.expander("📝 Meta Description Audit"):
             meta_desc, meta_desc_insights = MD(url)
             if meta_desc:
@@ -473,17 +479,23 @@ if url:
                     st.write(f"**Recommendations:** {meta_desc_insights}")
             else:
                 st.write(meta_desc_insights)
+        progress.progress(2 * progress_step)
 
+        status.text("Auditing H1 Headings...")
         with col1.expander("🔖 H1 Heading Audit"):
             optimization, details, recommendations = H1Audit(url)
             st.write(f"**Optimization:** {optimization}")
             st.write(f"**Details:** {details}")
             st.write(f"**Recommendations:** {recommendations}")
+        progress.progress(3 * progress_step)
 
+        status.text("Auditing Images...")
         with col1.expander("🖼️ Image Audit"):
             image_audit_results = ImageAudit(url)
-            # (rest of the Image Audit code remains the same)
+            # Process the image_audit_results here...
+        progress.progress(4 * progress_step)
 
+        status.text("Analyzing Linking...")
         with col2.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
             if linking_issues:
@@ -493,7 +505,9 @@ if url:
                     st.write("---")
             else:
                 st.write("No internal linking issues found.")
+        progress.progress(5 * progress_step)
 
+        status.text("Analyzing Anchor Texts...")
         with col2.expander("⚓ Anchor Text Audit"):
             issues, solutions = AnchorTextAudit(url)
             if issues:
@@ -503,7 +517,9 @@ if url:
                     st.write("---")
             else:
                 st.write("No anchor text issues found.")
+        progress.progress(6 * progress_step)
 
+        status.text("Fetching PageSpeed Insights...")
         with col2.expander("⚡ PageSpeed Insights"):
             pagespeed_data = get_pagespeed_insights(url)
             crux_metrics, lighthouse_metrics = analyze_pagespeed_data(pagespeed_data)
@@ -513,7 +529,9 @@ if url:
             st.write("## Lighthouse Results")
             for key, value in lighthouse_metrics.items():
                 st.write(f"**{key}:** {value}")
+        progress.progress(7 * progress_step)
 
+        status.text("Analyzing Crawlability...")
         with col2.expander("🕷️ Crawlability Insights"):
             crawl_issues = crawlability_insights(url)
             if crawl_issues:
@@ -523,7 +541,9 @@ if url:
                     st.write("---")
             else:
                 st.write("No crawlability issues detected.")
+        progress.progress(8 * progress_step)
 
+        status.text("Checking Accessibility...")
         with col1.expander("♿ Accessibility Insights"):
             access_issues = accessibility_insights(url)
             if access_issues:
@@ -533,4 +553,8 @@ if url:
                     st.write("---")
             else:
                 st.write("No accessibility issues detected.")
+        progress.progress(1.0)  # Mark as 100%
+
+    status.text("Analysis Complete!")
+
 
