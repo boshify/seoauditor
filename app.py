@@ -194,10 +194,13 @@ if url:
 
         with st.expander("🔗 Linking Audit"):
             linking_issues = LinkingAudit(url)
-            for issue_data in linking_issues:
-                st.write("**Issue:**", issue_data["issue"])
-                st.write("**Solution:**", issue_data["solution"])
-                st.write("---")
+            if linking_issues:
+                for issue_data in linking_issues:
+                    st.write("**Issue:**", issue_data["issue"])
+                    st.write("**Solution:**", issue_data["solution"])
+                    st.write("---")
+            else:
+                st.write("No internal linking issues found.")
 
         with st.expander("⚓ Anchor Text Audit"):
             issues, solutions = AnchorTextAudit(url)
@@ -206,6 +209,8 @@ if url:
                     st.write("**Issue:**", issue)
                     st.write("**Solution:**", solution)
                     st.write("---")
+            else:
+                st.write("No anchor text issues found.")
 
         with st.expander("⚡ PageSpeed Insights"):
             pagespeed_data = get_pagespeed_insights(url)
