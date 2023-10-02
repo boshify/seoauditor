@@ -99,13 +99,13 @@ def LinkingAudit(url):
         href = link.get('href')
         status_code = validate_link(url, href)
         if status_code:
-            issue_prompt = f"Analyze link with status {status_code}: {href}"
-            insights = get_gpt_insights(issue_prompt)
-        
+            issue = f"Broken link detected with status {status_code}: {href}"
+            solution = "Ensure the link points to a valid and accessible URL."
+            
             structured_issues.append({
-                "issue": insights,
-                "solution": get_gpt_insights(f"Provide a solution for the link issue: {href}"),
-                "example": get_gpt_insights(f"Provide an example solution for the link issue: {href}")
+                "issue": issue,
+                "solution": solution,
+                "example": href
             })
 
     return structured_issues
@@ -204,17 +204,16 @@ if url:
             for issue_data in linking_issues:
                 st.write("**Issue:**", issue_data["issue"])
                 st.write("**Solution:**", issue_data["solution"])
-                st.write("**Example:**", issue_data["example"])
                 st.write("---")  # Adds a horizontal line for separation
 
         # Anchor Text Audit
         with st.expander("⚓ Anchor Text Audit"):
             issues, solutions, examples = AnchorTextAudit(url)
-            for issue, solution, example in zip(issues, solutions, examples):
-                st.write("**Issue:**", issue)
-                st.write("**Solution:**", solution)
-                st.write("**Example:**", example)
-                st.write("---")  # Adds a horizontal line for separation
+            if issues:
+                for issue, solution, example in zip(issues, solutions, examples):
+                    st.write("**Issue:**", issue)
+                    st.write("**Solution:**", solution)
+                    st.write("---")  # Adds a horizontal line for separation
 
         # PageSpeed Insights Audit
         with st.expander("⚡ PageSpeed Insights"):
