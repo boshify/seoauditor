@@ -66,69 +66,73 @@ def MD(url):
         return None, "Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
 def LinkingAudit(url):
-    response = request_url(url)
-    if not response:
-        return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit"}]
+    try:
+        response = request_url(url)
+        if not response:
+            return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit"}]
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.find('main')
+        soup = BeautifulSoup(response.text, 'html.parser')
+        main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
-    if not main_content:
-        main_content = soup.find('article') or soup.find('section') or soup
+        structured_issues = []
 
-    structured_issues = []
+        links = [link for link in main_content.find_all('a', href=True) if not link['href'].startswith('#')]
+        for link in links:
+            href = link['href']
+            if not href.startswith(('http://', 'https://', 'www.')):
+                issue = f"Internal link found: {href}"
+                solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
+                
+                structured_issues.append({
+                    "issue": issue,
+                    "solution": solution,
+                    "example": href
+                })
 
-    links = main_content.find_all('a', href=True)  # Select only links with href attribute
-    for link in links:
-        href = link['href']
-        if not href.startswith(('http://', 'https://', 'www.')):
-            issue = f"Internal link found: {href}"
-            solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
-            
+        if not structured_issues:
             structured_issues.append({
-                "issue": issue,
-                "solution": solution,
-                "example": href
+                "issue": "No internal links found.",
+                "solution": "Consider adding relevant internal links to improve user navigation and SEO."
             })
 
-    if not structured_issues:
-        structured_issues.append({
-            "issue": "No internal links found.",
-            "solution": "Consider adding relevant internal links to improve user navigation and SEO."
-        })
-
-    return structured_issues
+        return structured_issues
+    except Exception as e:
+        return [{"issue": "Unexpected error during link audit", "solution": str(e)}]
 
 def AnchorTextAudit(url):
-    response = request_url(url)
-    if not response:
-        return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
+    try:
+        response = request_url(url)
+        if not response:
+            return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
 
-    soup = BeautifulSoup(response.text, 'html.parser')
-    main_content = soup.find('main')
+        soup = BeautifulSoup(response.text, 'html.parser')
+        main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
-    if not main_content:
-        main_content = soup.find('article') or soup.find('section') or soup
+        anchor_texts = [a.get_text(strip=True) for a in main_content.find_all('a') if a.get_text(strip=True)]
+        generic_texts = ["click here", "read more", "here", "link", "more"]
 
-    anchor_texts = [a.get_text(strip=True) for a in main_content.find_all('a') if a.get_text(strip=True)]
-    generic_texts = ["click here", "read more", "here", "link", "more"]
+        issues = [text for text in anchor_texts if text.lower() in generic_texts]
+        
+        generic_solutions = {
+            "click here": "Replace with descriptive text that indicates the link's destination.",
+            "read more": "Add specifics like 'Read more about [topic]' to provide context.",
+            "here": "Replace with text that describes the link's content.",
+            "link": "Specify what the link points to, e.g., 'Visit our [product] page'.",
+            "more": "Enhance with specifics like 'Learn more about [topic]'."
+        }
+        
+        if not anchor_texts:
+            return [("No Links Found", "I couldn't find any internal links on this page. Maybe add some?")]
+        
+        if not issues:
+            return [], []
 
-    issues = [text for text in anchor_texts if text.lower() in generic_texts]
-    
-    generic_solutions = {
-        "click here": "Replace with descriptive text that indicates the link's destination.",
-        "read more": "Add specifics like 'Read more about [topic]' to provide context.",
-        "here": "Replace with text that describes the link's content.",
-        "link": "Specify what the link points to, e.g., 'Visit our [product] page'.",
-        "more": "Enhance with specifics like 'Learn more about [topic]'."
-    }
-    
-    if not issues:
-        return [], []
+        solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
 
-    solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
+        return issues, solutions
+    except Exception as e:
+        return [("Unexpected error during anchor text audit", str(e))]
 
-    return issues, solutions
 
 
 def get_pagespeed_insights(url):
