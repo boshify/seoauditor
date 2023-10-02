@@ -265,7 +265,7 @@ if url:
             else:
                 st.write(meta_desc_insights)
 
-         with st.expander("🔖 H1 Heading Audit"):
+        with st.expander("🔖 H1 Heading Audit"):
             optimization, details, recommendations = H1Audit(url)
             st.write(f"**Optimization:** {optimization}")
             st.write(f"**Details:** {details}")
