@@ -104,14 +104,42 @@ def LinkingAudit(url):
             
             seen_links.add(full_url)
 
-            if not href.startswith(('http://', 'https://')):
-                issue = f"Relative internal link found: {full_url}"
-                solution = "Consider making internal links absolute for clarity, although it's not strictly necessary."
-                structured_issues.append({
-                    "issue": issue,
-                    "solution": solution,
-                    "example": href
-                })
+        if not structured_issues:
+            structured_issues.append({
+                "issue": "No internal links found.",
+                "solution": "Consider adding relevant internal links to improve user navigation and SEO."
+            })
+
+        return structured_issues
+    except Exception as e:
+        return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
+
+def LinkingAudit(url):
+    try:
+        response = request_url(url)
+        if not response:
+            return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit", "example": url}]
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for element in soup.find_all(['header', 'nav', 'footer']):
+            element.extract()
+
+        main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
+
+        structured_issues = []
+        seen_links = set()
+
+        links = main_content.find_all('a', href=True)
+        base_domain = urlparse(url).netloc
+
+        for link in links:
+            href = link['href']
+            full_url = urljoin(url, href)
+
+            if base_domain not in full_url or href.startswith('#') or full_url in seen_links:
+                continue
+            
+            seen_links.add(full_url)
 
         if not structured_issues:
             structured_issues.append({
@@ -122,6 +150,7 @@ def LinkingAudit(url):
         return structured_issues
     except Exception as e:
         return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
+
 
 def AnchorTextAudit(url):
     try:
