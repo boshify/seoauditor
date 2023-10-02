@@ -140,27 +140,30 @@ def AnchorTextAudit(url):
         anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
         generic_texts = ["click here", "read more", "here", "link", "more"]
 
-        issues = []
-        solutions = []
+        links_to_improve = []
+        recommended_anchor_texts = []
 
         for text, href in anchor_texts:
             if text.lower() in generic_texts:
-                issues.append(f"Link: {href} | Anchor Text: '{text}'")
+                links_to_improve.append(f"Link: {href} | Anchor Text: '{text}'")
                 gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
-                solutions.append(gpt_suggestion)
+                recommended_anchor_texts.append(gpt_suggestion)
 
-        while len(issues) < 3 and anchor_texts:
+        while len(links_to_improve) < 3 and anchor_texts:
             text, href = anchor_texts.pop(0)
-            issues.append(f"Link: {href} | Anchor Text: '{text}'")
+            links_to_improve.append(f"Link: {href} | Anchor Text: '{text}'")
             gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
-            solutions.append(gpt_suggestion)
+            recommended_anchor_texts.append(gpt_suggestion)
 
-        if not issues:
-            return ["No Issues Found"], ["All anchor texts on the page seem well-optimized."]
+        if not links_to_improve:
+            return ["No Links to Improve Found"], ["All anchor texts on the page seem well-optimized."]
 
-        return issues, solutions
+        return links_to_improve, recommended_anchor_texts
     except Exception as e:
         return [("Unexpected error during anchor text audit", str(e))]
+
+# The modified AnchorTextAudit function is defined above. It now uses the requested wording for the anchor text audit section.
+
 
 def get_pagespeed_insights(url):
     API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
