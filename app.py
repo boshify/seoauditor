@@ -323,6 +323,66 @@ def analyze_pagespeed_data(data):
 
     return crux_metrics, lighthouse_metrics
 
+def crawlability_insights(url):
+    response = request_url(url)
+    if not response:
+        return [("CRAWL", "Page could not be crawled.", "Ensure the page is accessible and not blocked by server settings.")]
+
+    soup = BeautifulSoup(response.text, 'html.parser')
+    issues = []
+
+    # ... previous checks ...
+
+    # CANON check (broken canonical link)
+    canonical_link = soup.find("link", rel="canonical")
+    if canonical_link and not request_url(canonical_link['href']):
+        issues.append(("CANON",
+                       "This page has a broken canonical link.",
+                       "Ensure the canonical link points to a valid and accessible URL."))
+
+    # JSCSS, JSCSSFILES, and JSCSSSIZE checks
+    css_files = [link['href'] for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
+    js_files = [script['src'] for script in soup.find_all('script', src=True) if script.get('src')]
+    broken_js_css = [link for link in css_files if not request_url(link)] + [script for script in js_files if not request_url(script)]
+    total_js_css_size = sum([len(request_url(link).text) for link in css_files + js_files if request_url(link)])
+
+    if broken_js_css:
+        issues.append(("JSCSS", 
+                       "Issues with broken internal JavaScript and CSS files on this page.", 
+                       "Ensure all linked JS and CSS files are accessible. Broken links: " + ", ".join(broken_js_css)))
+    
+    if len(css_files + js_files) > 10:  # Assuming more than 10 files is too many
+        issues.append(("JSCSSFILES", 
+                       "This page uses too many JavaScript and CSS files.", 
+                       "Consider combining and minifying JS and CSS files to reduce the number of HTTP requests."))
+
+    if total_js_css_size > 1 * 1024 * 1024:  # Assuming more than 1MB of JS/CSS is too much
+        issues.append(("JSCSSSIZE", 
+                       "This page has a JavaScript and CSS total size that is too large.", 
+                       "Optimize and compress JS and CSS files to improve page load time."))
+
+    # LINKCRAWL check
+    internal_links = [a['href'] for a in soup.find_all('a', href=True) if urlparse(url).netloc in urlparse(a['href']).netloc]
+    non_crawlable_links = [link for link in internal_links if not request_url(link)]
+    if non_crawlable_links:
+        issues.append(("LINKCRAWL",
+                       "Links on this page couldn't be crawled (incorrect URL formats).",
+                       "Ensure all internal links on the page point to valid and accessible URLs. Non-crawlable links: " + ", ".join(non_crawlable_links)))
+
+    # MINIFY check (simplified)
+    unminified_files = [link for link in css_files + js_files if ".min." not in link]
+    if unminified_files:
+        issues.append(("MINIFY",
+                       "Issues with unminified JavaScript and CSS files on this page.",
+                       "Minify the JS and CSS files to improve page load time. Unminified files: " + ", ".join(unminified_files)))
+
+    # ROBOT check is a bit involved as it requires fetching and parsing robots.txt
+    # For simplicity, we're skipping it here, but it would involve checking if the page's path is in the Disallow section of robots.txt
+
+    # SITEMAP check is also involved and would require fetching and parsing the sitemap.xml
+    # It's also skipped here for simplicity.
+
+    return issues
 
 
 
@@ -426,3 +486,13 @@ if url:
             st.write("## Lighthouse Results")
             for key, value in lighthouse_metrics.items():
                 st.write(f"**{key}:** {value}")
+
+        with st.expander("🕷️ Crawlability Insights"):
+            crawl_issues = crawlability_insights(url)
+            if crawl_issues:
+                for issue_code, issue_description, solution in crawl_issues:
+                    st.write(f"**Issue ({issue_code}):** {issue_description}")
+                    st.write(f"**Solution:** {solution}")
+                    st.write("---")
+            else:
+                st.write("No crawlability issues detected.")
