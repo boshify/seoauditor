@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 import requests
 import openai
 from urllib.parse import urljoin
-from lxml import etree
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
@@ -13,37 +12,39 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.159 Safari/537.36"
 }
 
-def get_gpt_insights(prompt):
-    messages = [
-        {"role": "system", "content": "You are an SEO expert."},
-        {"role": "user", "content": prompt}
-    ]
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo-16k",
-        messages=messages
-    )
-    return response.choices[0].message['content'].strip()
+# Error handler for requests
+def request_url(url):
+    try:
+        response = requests.get(url, headers=HEADERS)
+        response.raise_for_status()
+        return response
+    except requests.RequestException as e:
+        st.error(f"Error fetching URL: {e}")
+        return None
 
 def TT(url):
-    response = requests.get(url, headers=HEADERS)
+    response = request_url(url)
+    if not response:
+        return "Failed to fetch title", "Error retrieving title from URL"
+    
     soup = BeautifulSoup(response.text, 'html.parser')
     title = soup.title.string if soup.title else "No Title Found"
     insights = ""
     
     if len(title) < 50:
-        insights += "The title tag is shorter than the recommended 50-60 characters. "
-        insights += "Consider adding more descriptive keywords or phrases to improve its clarity. "
+        insights += "The title tag is shorter than the recommended 50-60 characters. Consider adding more descriptive keywords or phrases to improve its clarity."
     elif len(title) > 60:
-        insights += "The title tag is longer than the recommended 50-60 characters. "
-        insights += "Consider shortening it while retaining its main message. "
+        insights += "The title tag is longer than the recommended 50-60 characters. Consider shortening it while retaining its main message."
     else:
-        insights += "The title tag is within the recommended length and seems well-optimized. "
-        insights += "Ensure it's relevant and unique to the content of the page."
+        insights += "The title tag is within the recommended length and seems well-optimized. Ensure it's relevant and unique to the content of the page."
     
     return title, insights
 
 def MD(url):
-    response = requests.get(url, headers=HEADERS)
+    response = request_url(url)
+    if not response:
+        return None, "Error retrieving meta description from URL"
+    
     soup = BeautifulSoup(response.text, 'html.parser')
     meta_description = soup.find('meta', attrs={'name': 'description'})
     insights = ""
@@ -52,35 +53,23 @@ def MD(url):
         desc = meta_description['content']
         
         if len(desc) < 150:
-            insights += "The meta description is shorter than the recommended 150-160 characters. "
-            insights += "Consider expanding it to provide a more comprehensive summary of the page. "
+            insights += "The meta description is shorter than the recommended 150-160 characters. Consider expanding it to provide a more comprehensive summary of the page."
         elif len(desc) > 160:
-            insights += "The meta description is longer than the recommended 150-160 characters. "
-            insights += "Consider shortening it to make it concise. "
+            insights += "The meta description is longer than the recommended 150-160 characters. Consider shortening it to make it concise."
         
         ctas = ['learn more', 'discover', 'find out', 'get started', 'read on']
         if not any(cta in desc.lower() for cta in ctas):
-            insights += "Consider adding a call to action in the meta description to entice users. "
+            insights += "Consider adding a call to action in the meta description to entice users."
         
         return desc, insights
     else:
-        return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
-
-def validate_link(base_url, href):
-    full_url = urljoin(base_url, href)
-    
-    try:
-        response = requests.head(full_url, headers=HEADERS, allow_redirects=True, timeout=5)
-        
-        if 400 <= response.status_code <= 599:
-            return response.status_code
-    except requests.RequestException:
-        return 503
-    
-    return None
+        return None, "Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
 def LinkingAudit(url):
-    response = requests.get(url, headers=HEADERS)
+    response = request_url(url)
+    if not response:
+        return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit"}]
+
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.find('main')
 
@@ -111,7 +100,10 @@ def LinkingAudit(url):
     return structured_issues
 
 def AnchorTextAudit(url):
-    response = requests.get(url, headers=HEADERS)
+    response = request_url(url)
+    if not response:
+        return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
+
     soup = BeautifulSoup(response.text, 'html.parser')
     main_content = soup.find('main')
 
@@ -131,9 +123,9 @@ def AnchorTextAudit(url):
         "more": "Enhance with specifics like 'Learn more about [topic]'."
     }
     
-    solutions = [generic_solutions.get(text.lower(), "Replace with more descriptive text.") for text in issues]
+    solutions = [(text, generic_solutions.get(text.lower(), "Replace with more descriptive text.")) for text in issues]
 
-    return issues, solutions
+    return solutions
 
 def get_pagespeed_insights(url):
     API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
