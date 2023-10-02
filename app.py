@@ -257,15 +257,16 @@ def analyze_pagespeed_data(data):
 
     return crux_metrics, lighthouse_metrics
 
-def ImageAudit(url):
+def ImageAudit_v2(url):
     response = request_url(url)
     if not response:
-        return "Error fetching URL", "Failed to retrieve content for image audit", "", ""
+        return {"error": "Failed to retrieve content for image audit"}
 
     soup = BeautifulSoup(response.text, 'html.parser')
     img_elements = soup.find_all('img')
 
     missing_alt = []
+    existing_alt = []
     broken_imgs = []
     non_descriptive_names = []
 
@@ -274,33 +275,51 @@ def ImageAudit(url):
     for img in img_elements:
         # Check for missing alt attributes
         if not img.get('alt'):
-            missing_alt.append(img['src'])
+            missing_alt.append(urljoin(url, img['src']))
+        else:
+            existing_alt.append((urljoin(url, img['src']), img['alt']))
 
         # Check for internal broken images
         img_src = urljoin(url, img['src'])
         if base_domain in urlparse(img_src).netloc:
             img_response = request_url(img_src)
             if not img_response:
-                broken_imgs.append(img['src'])
+                broken_imgs.append(img_src)
 
-        # Check for non-descriptive image filenames
+        # Non-descriptive filenames will be processed later (after the loop)
         img_name = urlparse(img['src']).path.split('/')[-1]
         if len(img_name.split('-')) <= 1:
-            non_descriptive_names.append(img['src'])
+            non_descriptive_names.append(img_src)
 
-    # Compile the results
-    optimization_alt = "Missing ALT Attributes" if missing_alt else "All images have ALT attributes"
-    details_alt = "Images on this page don't have alt attributes." if missing_alt else "All images on the page have alt attributes for better SEO and accessibility."
+    # Recommendations for missing alt attributes
+    alt_recommendations = []
+    for img_src in missing_alt:
+        img_name = urlparse(img_src).path.split('/')[-1]
+        alt_suggestion = get_gpt_insights(f"Suggest an alt text for the image with filename: {img_name}")
+        alt_recommendations.append((img_src, alt_suggestion))
 
-    optimization_img = "Broken Images Found" if broken_imgs else "No broken images found"
-    details_img = "Internal images on this page are broken." if broken_imgs else "All internal images on the page are loading correctly."
+    # Improved alt text for existing alt attributes
+    improved_alt_texts = []
+    for img_src, alt_text in existing_alt:
+        improved_alt_suggestion = get_gpt_insights(f"Suggest a better alt text for the image with current alt text: {alt_text}")
+        improved_alt_texts.append((img_src, improved_alt_suggestion))
 
-    optimization_title = "Non-Descriptive Image Filenames Found" if non_descriptive_names else "All image filenames are descriptive"
-    details_title = "Image file names are not descriptive." if non_descriptive_names else "All image filenames on the page are descriptive, enhancing SEO."
+    # Improved filenames for non-descriptive names
+    improved_filenames = []
+    for img_src in non_descriptive_names:
+        img_name = urlparse(img_src).path.split('/')[-1]
+        filename_suggestion = get_gpt_insights(f"Suggest a more descriptive filename for the image with current name: {img_name}")
+        improved_filenames.append((img_src, filename_suggestion))
 
-    return optimization_alt, details_alt, optimization_img, details_img, optimization_title, details_title
+    return {
+        "missing_alt": (missing_alt, "Images should have alt attributes for accessibility and SEO.", alt_recommendations),
+        "existing_alt": (existing_alt, "Checking the descriptiveness of existing alt texts.", improved_alt_texts),
+        "broken_imgs": (broken_imgs, "Broken images can lead to poor user experience.", "Consider re-uploading or fixing the source of the broken images."),
+        "non_descriptive_names": (non_descriptive_names, "Descriptive image filenames can help with image SEO.", improved_filenames)
+    }
 
-# The ImageAudit function is defined above. It provides detailed insights and recommendations based on the findings.
+# The updated ImageAudit_v2 function is defined above. It provides detailed insights and recommendations based on the findings.
+
 
 
 st.title("Single Page SEO Auditor")
