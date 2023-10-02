@@ -568,9 +568,7 @@ if url:
 
 st.markdown("----")
 
-# Add the "Made by Jonathan Boshoff" at the bottom of the display with a link
-st.markdown("""
-<div style='position: fixed; bottom: 10px; right: 10px; font-size: 12px;'>
-    <a href="https://jonathanboshoff.com/one-page-seo-audit/" target="_blank">Made by Jonathan Boshoff</a>
-</div>
-""", unsafe_allow_html=True)
+# Add the "Made by Jonathan Boshoff" in the sidebar with a link
+st.sidebar.markdown(
+    "#### [Made by Jonathan Boshoff](https://jonathanboshoff.com/one-page-seo-audit/)"
+)
