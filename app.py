@@ -85,9 +85,9 @@ def LinkingAudit(url):
             href = link['href']
             absolute_url = urljoin(base_url, href)
             
-            if base_url in absolute_url and not href.startswith(('http://', 'https://')):
-                issue = f"Internal link found: {absolute_url}"
-                solution = "Ensure internal links are fully qualified with 'http://' or 'https://' and the full domain name."
+            if href.startswith('/') and base_url in absolute_url:
+                issue = f"Relative internal link found: {absolute_url}"
+                solution = "Consider making internal links absolute for clarity, although it's not strictly necessary."
                 
                 structured_issues.append({
                     "issue": issue,
@@ -97,8 +97,8 @@ def LinkingAudit(url):
 
         if not structured_issues:
             structured_issues.append({
-                "issue": "No internal links found.",
-                "solution": "Consider adding relevant internal links to improve user navigation and SEO."
+                "issue": "No relative internal links found.",
+                "solution": "All internal links seem to be absolute, which is good for clarity."
             })
 
         return structured_issues
