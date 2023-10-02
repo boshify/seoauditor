@@ -65,32 +65,47 @@ def MD(url):
     else:
         return None, "❌ Meta description is missing. Consider adding one to provide a brief summary of the page and improve click-through rates from search results."
 
-def LinkingAudit(url):
+def AnchorTextAudit(url):
     try:
         response = request_url(url)
         if not response:
-            return [{"issue": "Error fetching URL", "solution": "Failed to retrieve content for linking audit"}]
+            return [("Error fetching URL",)], ["Failed to retrieve content for anchor text audit"]
 
         soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Exclude common header, navigation, and footer areas
+        for element in soup.find_all(['header', 'nav', 'footer']):
+            element.extract()
+
+        # If available, focus on the main content area
         main_content = soup.find('main') or soup.find('article') or soup.find('section') or soup
 
-        structured_issues = []
+        anchor_texts = [(a.get_text(strip=True), a['href']) for a in main_content.find_all('a', href=True) if a.get_text(strip=True)]
+        generic_texts = ["click here", "read more", "here", "link", "more"]
 
-        # Extract base URL
-        base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
-        
-        links = [link for link in main_content.find_all('a', href=True) if not link['href'].startswith('#')]
+        issues = []
+        solutions = []
 
-        # Check for any other potential issues with links (for now, we're skipping relative links)
-        # Add any other conditions as needed in the future.
+        for text, href in anchor_texts:
+            if text.lower() in generic_texts:
+                issues.append(f"Link: {href} | Anchor Text: '{text}'")
+                gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
+                solutions.append(gpt_suggestion)
 
-        # If no issues found, return empty list
-        if not structured_issues:
-            return []
+        # If there are fewer than 3 issues, use GPT to suggest improvements
+        while len(issues) < 3 and anchor_texts:
+            text, href = anchor_texts.pop(0)
+            issues.append(f"Link: {href} | Anchor Text: '{text}'")
+            gpt_suggestion = get_gpt_insights(f"Suggest a better anchor text for a link pointing to: {href}")
+            solutions.append(gpt_suggestion)
 
-        return structured_issues
+        if not issues:
+            return ["No Issues Found"], ["All anchor texts on the page seem well-optimized."]
+
+        return issues, solutions
     except Exception as e:
-        return [{"issue": "Unexpected error during link audit", "solution": str(e)}]
+        return [("Unexpected error during anchor text audit",)], [str(e)]
+
 
 
 
