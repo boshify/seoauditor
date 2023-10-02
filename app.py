@@ -84,7 +84,7 @@ def LinkingAudit(url):
     main_content = soup.find('main')
 
     if not main_content:
-        main_content = soup.find('article') or soup.find('section') or soup  # Default to entire soup if none found
+        main_content = soup.find('article') or soup.find('section') or soup
 
     structured_issues = []
 
