@@ -290,7 +290,8 @@ def AnchorTextAudit(url):
 
         return links_to_improve, recommended_anchor_texts
     except Exception as e:
-        return [("Unexpected error during anchor text audit", str(e))]
+        return [("Unexpected error during anchor text audit", str(e))], []
+
 
 # The modified AnchorTextAudit function is defined above. It now uses the requested wording for the anchor text audit section.
 
