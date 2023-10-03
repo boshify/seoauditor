@@ -147,7 +147,7 @@ def ImageAudit(url):
         return {"error": "Failed to retrieve content for image audit"}
 
     soup = BeautifulSoup(response.text, 'html.parser')
-    img_elements = soup.find_all('img')
+    img_elements = [img for img in soup.find_all('img') if img.get('src')]
 
     missing_alt = []
     existing_alt = []
@@ -260,7 +260,7 @@ def AnchorTextAudit(url):
     try:
         response = request_url(url)
         if not response:
-            return [("Error fetching URL", "Failed to retrieve content for anchor text audit")]
+            return ["Error fetching URL"], ["Failed to retrieve content for anchor text audit"]
 
         soup = BeautifulSoup(response.text, 'html.parser')
         for element in soup.find_all(['header', 'nav', 'footer']):
@@ -290,7 +290,7 @@ def AnchorTextAudit(url):
 
         return links_to_improve, recommended_anchor_texts
     except Exception as e:
-        return [("Unexpected error during anchor text audit", str(e))], []
+        return ["Unexpected error during anchor text audit"], [str(e)], []
 
 
 # The modified AnchorTextAudit function is defined above. It now uses the requested wording for the anchor text audit section.
