@@ -34,15 +34,26 @@ def safe_request_url(target_url, method='GET'):
         return None
 
 def get_gpt_insights(prompt):
-    messages = [
-        {"role": "system", "content": "You are an SEO expert."},
-        {"role": "user", "content": prompt}
-    ]
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=messages
-    )
-    return response.choices[0].message['content'].strip()
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an SEO expert."},
+                {"role": "user", "content": prompt}
+            ]
+        )
+        return response.choices[0].message['content'].strip()
+
+    except openai.error.APIError as e:
+        st.error(f"OpenAI API returned an API Error: {e}")
+        return ""
+    except openai.error.APIConnectionError as e:
+        st.error(f"Failed to connect to OpenAI API: {e}")
+        return ""
+    except openai.error.RateLimitError as e:
+        st.error(f"OpenAI API request exceeded rate limit: {e}")
+        return ""
+
 
 def TT(url):
     response = request_url(url)
