@@ -107,4 +107,4 @@ if url:
             if isinstance(value[2], list):
                 for img, suggestion in value[2]:
                     st.write(f"Image: {img}")
-                    st.write(f"Suggestion: {suggestion
+                    st.write(f"Suggestion: {suggestion}")
