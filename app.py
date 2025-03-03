@@ -36,7 +36,7 @@ def safe_request_url(target_url, method='GET'):
 def get_gpt_insights(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an SEO expert."},
                 {"role": "user", "content": prompt}
