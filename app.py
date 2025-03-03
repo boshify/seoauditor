@@ -4,6 +4,9 @@ import requests
 import openai
 from urllib.parse import urljoin, urlparse
 
+# Import new error classes from the updated openai.error module
+from openai.error import OpenAIError, APIError, APIConnectionError, RateLimitError
+
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
 
@@ -36,24 +39,26 @@ def safe_request_url(target_url, method='GET'):
 def get_gpt_insights(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",
+            model="gpt-4o-mini",  # Using GPT-4o mini model
             messages=[
                 {"role": "system", "content": "You are an SEO expert."},
                 {"role": "user", "content": prompt}
             ]
         )
-        return response.choices[0].message['content'].strip()
-
-    except openai.error.APIError as e:
+        # Note: In the new API, the completion text is located under ["choices"][0]["message"]["content"]
+        return response["choices"][0]["message"]["content"].strip()
+    except APIError as e:
         st.error(f"OpenAI API returned an API Error: {e}")
         return ""
-    except openai.error.APIConnectionError as e:
+    except APIConnectionError as e:
         st.error(f"Failed to connect to OpenAI API: {e}")
         return ""
-    except openai.error.RateLimitError as e:
+    except RateLimitError as e:
         st.error(f"OpenAI API request exceeded rate limit: {e}")
         return ""
-
+    except OpenAIError as e:
+        st.error(f"OpenAI API error: {e}")
+        return ""
 
 def TT(url):
     response = request_url(url)
@@ -74,7 +79,6 @@ def TT(url):
         insights += "The title tag is within the recommended length and seems well-optimized. Ensure it's relevant and unique to the content of the page."
     
     return title, insights
-
 
 def MD(url):
     response = request_url(url)
@@ -149,9 +153,6 @@ def H1Audit(url):
         recommendations = f"Alternative H1 Suggestion for better optimization: {alternative_h1_suggestion}"
         return optimization, details, recommendations
 
-
-
-
 def ImageAudit(url):
     response = request_url(url)
     if not response:
@@ -168,38 +169,32 @@ def ImageAudit(url):
     base_domain = urlparse(url).netloc
 
     for img in img_elements:
-        # Check for missing alt attributes
         if not img.get('alt'):
             missing_alt.append(urljoin(url, img['src']))
         else:
             existing_alt.append((urljoin(url, img['src']), img['alt']))
 
-        # Check for internal broken images
         img_src = urljoin(url, img['src'])
         if base_domain in urlparse(img_src).netloc:
             img_response = request_url(img_src)
             if not img_response:
                 broken_imgs.append(img_src)
 
-        # Non-descriptive filenames will be processed later (after the loop)
         img_name = urlparse(img['src']).path.split('/')[-1]
         if len(img_name.split('-')) <= 1:
             non_descriptive_names.append(img_src)
 
-    # Recommendations for missing alt attributes
     alt_recommendations = []
     for img_src in missing_alt:
         img_name = urlparse(img_src).path.split('/')[-1]
         alt_suggestion = get_gpt_insights(f"Suggest an alt text for the image with filename: {img_name}")
         alt_recommendations.append((img_src, alt_suggestion))
 
-    # Improved alt text for existing alt attributes
     improved_alt_texts = []
     for img_src, alt_text in existing_alt:
         improved_alt_suggestion = get_gpt_insights(f"Suggest a better alt text for the image with current alt text: {alt_text}")
         improved_alt_texts.append((img_src, improved_alt_suggestion))
 
-    # Improved filenames for non-descriptive names
     improved_filenames = []
     for img_src in non_descriptive_names:
         img_name = urlparse(img_src).path.split('/')[-1]
@@ -212,10 +207,6 @@ def ImageAudit(url):
         "broken_imgs": (broken_imgs, "Broken images can lead to poor user experience.", "Consider re-uploading or fixing the source of the broken images."),
         "non_descriptive_names": (non_descriptive_names, "Descriptive image filenames can help with image SEO.", improved_filenames)
     }
-
-# The updated ImageAudit function is defined above, reverting the name change.
-
-
 
 def LinkingAudit(url):
     try:
@@ -239,11 +230,9 @@ def LinkingAudit(url):
             href = link['href']
             full_url = urljoin(url, href)
 
-            # If link is internal and not checked before
             if base_domain in urlparse(full_url).netloc and full_url not in seen_links and not href.startswith('#'):
                 seen_links.add(full_url)
                 
-                # Check if the link resolves correctly
                 link_response = request_url(full_url)
                 if not link_response or link_response.status_code >= 400:
                     structured_issues.append({
@@ -261,11 +250,6 @@ def LinkingAudit(url):
         return structured_issues
     except Exception as e:
         return [{"issue": "Unexpected error during linking audit", "solution": str(e), "example": url}]
-
-# The modified LinkingAudit function is defined above. It checks the status code of every internal link and reports those that don't resolve correctly.
-
-
-
 
 def AnchorTextAudit(url):
     try:
@@ -302,10 +286,6 @@ def AnchorTextAudit(url):
         return links_to_improve, recommended_anchor_texts
     except Exception as e:
         return ["Unexpected error during anchor text audit"], [str(e)], []
-
-
-# The modified AnchorTextAudit function is defined above. It now uses the requested wording for the anchor text audit section.
-
 
 def get_pagespeed_insights(url):
     API_ENDPOINT = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
@@ -353,10 +333,8 @@ def analyze_pagespeed_data(data):
 def crawlability_insights(url):
     issues = []
 
-    # Enhanced request function with error handling
     def safe_request_url(target_url):
         try:
-            # Append the base URL if no scheme is provided
             if not urlparse(target_url).scheme:
                 target_url = urljoin(url, target_url)
             response = request_url(target_url)
@@ -367,18 +345,16 @@ def crawlability_insights(url):
 
     response = safe_request_url(url)
     if not response:
-        return issues  # Return early if the main page can't be crawled
+        return issues
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
-    # CANON check (broken canonical link)
     canonical_link = soup.find("link", rel="canonical")
     if canonical_link and not safe_request_url(canonical_link['href']):
         issues.append(("CANON",
                        f"This page has a broken canonical link pointing to {canonical_link['href']}.",
                        "Ensure the canonical link points to a valid and accessible URL."))
 
-    # JSCSS, JSCSSFILES, and JSCSSSIZE checks
     css_files = [link['href'] for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
     js_files = [script['src'] for script in soup.find_all('script', src=True) if script.get('src')]
     broken_js_css = [link for link in css_files if not safe_request_url(link)] + [script for script in js_files if not safe_request_url(script)]
@@ -391,17 +367,16 @@ def crawlability_insights(url):
     num_files = len(css_files + js_files)
     total_js_css_size = sum([len(safe_request_url(link).text) for link in css_files + js_files if safe_request_url(link)])
     
-    if num_files > 10:  # Assuming more than 10 files is too many
+    if num_files > 10:
         issues.append(("JSCSSFILES", 
                        f"This page uses {num_files} JavaScript and CSS files, which is considered excessive.", 
                        "Consider combining and minifying JS and CSS files to reduce the number of HTTP requests."))
 
-    if total_js_css_size > 1 * 1024 * 1024:  # Assuming more than 1MB of JS/CSS is too much
+    if total_js_css_size > 1 * 1024 * 1024:
         issues.append(("JSCSSSIZE", 
                        f"The total size of JavaScript and CSS on this page is {total_js_css_size / (1024 * 1024):.2f}MB, which is considered too large.", 
                        "Optimize and compress JS and CSS files to improve page load time."))
 
-    # LINKCRAWL check
     internal_links = [a['href'] for a in soup.find_all('a', href=True) if urlparse(url).netloc in urlparse(a['href']).netloc]
     non_crawlable_links = [link for link in internal_links if not safe_request_url(link)]
     if non_crawlable_links:
@@ -409,7 +384,6 @@ def crawlability_insights(url):
                        f"Links on this page couldn't be crawled (incorrect URL formats): {', '.join(non_crawlable_links)}",
                        "Ensure all internal links on the page point to valid and accessible URLs."))
 
-    # MINIFY check (simplified)
     unminified_files = [link for link in css_files + js_files if ".min." not in link]
     if unminified_files:
         issues.append(("MINIFY",
@@ -418,31 +392,23 @@ def crawlability_insights(url):
 
     return issues
 
-
-
 def accessibility_insights(url):
     issues = []
-    
-    # Using a set to keep track of all URLs we've visited to detect loops
     visited_urls = set()
 
-    # Make a HEAD request to the URL to check for redirects without downloading the entire content
     response = safe_request_url(url, method='HEAD')
     
     if not response:
         issues.append(("URLRES", "URL does not resolve.", "Ensure the URL is correct and the server is responsive."))
-        return issues  # Return early if the URL doesn't resolve
+        return issues
 
-    # Check for redirect chains and loops
     if len(response.history) > 1:
         for r in response.history:
-            # If a URL appears more than once in the history, it's a loop
             if r.url in visited_urls:
                 issues.append(("REDIRCHAIN", "Redirect chains and loops detected on this page.", f"The URL {r.url} was redirected to multiple times. Ensure redirects are set up correctly to avoid loops."))
                 break
             visited_urls.add(r.url)
 
-    # Check for temporary and permanent redirects
     if response.history:
         last_redirect = response.history[-1]
         if last_redirect.status_code == 301:
@@ -450,29 +416,21 @@ def accessibility_insights(url):
         else:
             issues.append(("TEMPREDIR", "This URL has a temporary redirect.", f"The URL redirects temporarily ({last_redirect.status_code}) to {response.url}. Ensure this is intended, as temporary redirects might not pass link equity in the same way permanent redirects do."))
 
-    # General redirect issue check (if any of the above conditions were triggered)
     if any(issue[0] in ["TEMPREDIR", "PERMREDIR", "REDIRCHAIN"] for issue in issues):
         issues.append(("REDIR", "This URL has a redirect issue.", "Review the specific redirect issues listed above and rectify as necessary."))
 
     return issues
-
-
-
-
-
-
-
 
 st.title("Single Page SEO Auditor")
 url = st.text_input("Enter URL of the page to audit")
 
 if url:
     progress = st.progress(0)
-    progress_step = 1.0 / 9  # Based on the number of audits
-    status = st.empty()  # Placeholder for status messages
+    progress_step = 1.0 / 9
+    status = st.empty()
 
     with st.spinner("Analyzing..."):
-        col1, col2 = st.columns(2)  # Creating two columns
+        col1, col2 = st.columns(2)
 
         status.text("Analyzing Title Tag...")
         with col1.expander("🏷️ Title Tag Audit"):
@@ -573,14 +531,12 @@ if url:
                     st.write("---")
             else:
                 st.write("No accessibility issues detected.")
-        progress.progress(1.0)  # Mark as 100%
+        progress.progress(1.0)
 
     status.text("Analysis Complete!")
 
-
 st.markdown("----")
 
-# Add the "Made by Jonathan Boshoff" in the sidebar with a link
 st.sidebar.markdown(
     "#### [Made by Jonathan Boshoff](https://jonathanboshoff.com/one-page-seo-audit/)"
 )
