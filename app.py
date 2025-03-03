@@ -4,8 +4,12 @@ import requests
 import openai
 from urllib.parse import urljoin, urlparse
 
-# Import new error classes from the updated openai.error module
-from openai.error import OpenAIError, APIError, APIConnectionError, RateLimitError
+# Try to import error classes from the new location; fall back if not available.
+try:
+    from openai.error import APIError, APIConnectionError, RateLimitError, OpenAIError
+except ModuleNotFoundError:
+    # If the error module isn’t found, use the base Exception for all error types.
+    APIError = APIConnectionError = RateLimitError = OpenAIError = Exception
 
 # Initialize OpenAI with API key from Streamlit's secrets
 openai.api_key = st.secrets["openai_api_key"]
@@ -39,13 +43,12 @@ def safe_request_url(target_url, method='GET'):
 def get_gpt_insights(prompt):
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-4o-mini",  # Using GPT-4o mini model
+            model="gpt-4o-mini",  # Use GPT-4o mini model
             messages=[
                 {"role": "system", "content": "You are an SEO expert."},
                 {"role": "user", "content": prompt}
             ]
         )
-        # Note: In the new API, the completion text is located under ["choices"][0]["message"]["content"]
         return response["choices"][0]["message"]["content"].strip()
     except APIError as e:
         st.error(f"OpenAI API returned an API Error: {e}")
@@ -333,7 +336,7 @@ def analyze_pagespeed_data(data):
 def crawlability_insights(url):
     issues = []
 
-    def safe_request_url(target_url):
+    def safe_request_url_inner(target_url):
         try:
             if not urlparse(target_url).scheme:
                 target_url = urljoin(url, target_url)
@@ -343,21 +346,21 @@ def crawlability_insights(url):
             issues.append(("Error", f"Error fetching URL: {e}", "Ensure the URL is accessible and valid."))
             return None
 
-    response = safe_request_url(url)
+    response = safe_request_url_inner(url)
     if not response:
         return issues
 
     soup = BeautifulSoup(response.text, 'html.parser')
 
     canonical_link = soup.find("link", rel="canonical")
-    if canonical_link and not safe_request_url(canonical_link['href']):
+    if canonical_link and not safe_request_url_inner(canonical_link['href']):
         issues.append(("CANON",
                        f"This page has a broken canonical link pointing to {canonical_link['href']}.",
                        "Ensure the canonical link points to a valid and accessible URL."))
 
     css_files = [link['href'] for link in soup.find_all('link', rel='stylesheet') if link.get('href')]
     js_files = [script['src'] for script in soup.find_all('script', src=True) if script.get('src')]
-    broken_js_css = [link for link in css_files if not safe_request_url(link)] + [script for script in js_files if not safe_request_url(script)]
+    broken_js_css = [link for link in css_files if not safe_request_url_inner(link)] + [script for script in js_files if not safe_request_url_inner(script)]
 
     if broken_js_css:
         issues.append(("JSCSS", 
@@ -365,7 +368,7 @@ def crawlability_insights(url):
                        "Ensure all linked JS and CSS files are accessible."))
 
     num_files = len(css_files + js_files)
-    total_js_css_size = sum([len(safe_request_url(link).text) for link in css_files + js_files if safe_request_url(link)])
+    total_js_css_size = sum([len(safe_request_url_inner(link).text) for link in css_files + js_files if safe_request_url_inner(link)])
     
     if num_files > 10:
         issues.append(("JSCSSFILES", 
@@ -378,7 +381,7 @@ def crawlability_insights(url):
                        "Optimize and compress JS and CSS files to improve page load time."))
 
     internal_links = [a['href'] for a in soup.find_all('a', href=True) if urlparse(url).netloc in urlparse(a['href']).netloc]
-    non_crawlable_links = [link for link in internal_links if not safe_request_url(link)]
+    non_crawlable_links = [link for link in internal_links if not safe_request_url_inner(link)]
     if non_crawlable_links:
         issues.append(("LINKCRAWL",
                        f"Links on this page couldn't be crawled (incorrect URL formats): {', '.join(non_crawlable_links)}",
